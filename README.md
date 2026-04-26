@@ -74,6 +74,27 @@ npm test
 
 ---
 
+## 📜 Changelog
+
+### [1.1.0] - 2026-04-27
+- **Added**: New Archive Window with dimension tabs, search, and undo functionality.
+- **Added**: Intelligent Auto-Archiving logic (1/7/30 days based on task dimension).
+- **Added**: Automated detection of clickable URLs in task descriptions.
+- **Added**: Real-time language synchronization across all application windows.
+- **Added**: New visual icons for Search (Magnifying Glass) and Add Task (Pencil).
+- **Improved**: Redesigned Archive icons (Open Box lid for entry, Box with arrow for action).
+- **Improved**: Reorganized header action layout in the Task Management window.
+- **Fixed**: Inconsistent language state when switching locales in secondary windows.
+
+### [1.0.0] - 2026-04-24
+- Initial release.
+- Tray-based task management with global shortcut support.
+- Multi-dimensional task views (Day, Week, Month).
+- Voice input support with speech recognition.
+- Dark-mode neon aesthetic.
+
+---
+
 ## 📄 License
 
 This project is licensed under the [ISC License](LICENSE).
