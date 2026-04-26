@@ -25,7 +25,10 @@ const translations = {
     'about-version': 'Version',
     'about-author': 'Author',
     'btn-close': 'Close',
-    'setting-auto-launch': 'Launch at login'
+    'setting-auto-launch': 'Launch at login',
+    'archive-title': 'Archived Tasks',
+    'btn-archive': 'Open Archive',
+    'col-deleted': 'Archived At'
   },
   'zh-TW': {
     'tab-day': '日',
@@ -53,7 +56,10 @@ const translations = {
     'about-version': '版本',
     'about-author': '作者',
     'btn-close': '關閉',
-    'setting-auto-launch': '開機時自動啟動'
+    'setting-auto-launch': '開機時自動啟動',
+    'archive-title': '封存任務',
+    'btn-archive': '開啟封存庫',
+    'col-deleted': '封存時間'
   }
 };
 

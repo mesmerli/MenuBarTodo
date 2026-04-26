@@ -8,6 +8,32 @@ let todos = [];
 let deletedHistory = [];
 let currentDimension = 'day';
 
+function renderTaskText(container, text) {
+  container.innerHTML = '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  parts.forEach(part => {
+    if (part.match(urlRegex)) {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'task-link';
+      a.textContent = part;
+      a.style.color = 'var(--accent)';
+      a.style.textDecoration = 'underline';
+      a.style.cursor = 'pointer';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.api.openUrl(part);
+      });
+      container.appendChild(a);
+    } else {
+      container.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
 // Set up tabs
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -92,17 +118,7 @@ function renderTodos() {
   
   const filteredTodos = todos.filter(t => {
     const dim = t.dimension || 'day';
-    if (dim !== currentDimension) return false;
-    
-    // Hide completed tasks that exceed their time dimension
-    if (t.completed && t.completedAt) {
-      const compDate = new Date(t.completedAt);
-      if (dim === 'day') return isSameDay(compDate, now);
-      if (dim === 'week') return isSameWeek(compDate, now);
-      if (dim === 'month') return isSameMonth(compDate, now);
-    }
-    
-    return true;
+    return dim === currentDimension;
   });
   
   // Sort: uncompleted first, then by id (newest first)
@@ -125,7 +141,7 @@ function renderTodos() {
     
     const textSpan = document.createElement('span');
     textSpan.className = 'todo-text';
-    textSpan.textContent = todo.text;
+    renderTaskText(textSpan, todo.text);
     textSpan.addEventListener('click', (e) => {
       // Don't trigger if clicking checkbox/delete
       const input = document.createElement('input');
@@ -165,8 +181,10 @@ function renderTodos() {
     deleteBtn.className = 'delete-btn';
     deleteBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
+        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+        <rect x="1" y="3" width="22" height="5"></rect>
+        <polyline points="10 12 12 14 14 12"></polyline>
+        <line x1="12" y1="8" x2="12" y2="14"></line>
       </svg>
     `;
     deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
@@ -263,8 +281,8 @@ async function deleteTodo(id) {
   if (index !== -1) {
     const deleted = todos.splice(index, 1)[0];
     
-    // Backup and add to history
-    window.api.backupTodos([deleted]);
+    // Archive and add to history
+    window.api.archiveTodos([deleted]);
     deletedHistory.push([deleted]);
     if (deletedHistory.length > 10) deletedHistory.shift();
     if (mainUndoBtn) mainUndoBtn.disabled = false;

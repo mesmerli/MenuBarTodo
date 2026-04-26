@@ -26,8 +26,11 @@
       </button>
     </div>
     <div class="header">
-      <div class="input-wrapper">
-        <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off">
+      <div class="input-wrapper" style="position: relative; display: flex; align-items: center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-secondary); pointer-events: none;">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+        <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="padding-left: 34px;">
         <button id="voice-btn" class="voice-btn" title="Voice Input">🎤</button>
       </div>
     </div>

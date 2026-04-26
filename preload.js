@@ -6,10 +6,16 @@ contextBridge.exposeInMainWorld('api', {
   onWindowShow: (callback) => ipcRenderer.on('window-show', () => callback()),
   openHistoryWindow: () => ipcRenderer.send('open-history-window'),
   onTodosUpdated: (callback) => ipcRenderer.on('todos-updated', () => callback()),
-  backupTodos: (todos) => ipcRenderer.send('backup-todos', todos),
+  archiveTodos: (todos) => ipcRenderer.send('archive-todos', todos),
   loadConfig: () => ipcRenderer.invoke('load-config'),
   saveConfig: (config) => ipcRenderer.invoke('save-config', config),
   onLanguageChanged: (callback) => ipcRenderer.on('language-changed', (event, lang) => callback(lang)),
   setAutoLaunch: (enabled) => ipcRenderer.invoke('set-auto-launch', enabled),
-  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch')
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch'),
+  openArchiveWindow: () => ipcRenderer.send('open-archive-window'),
+  loadArchives: () => ipcRenderer.invoke('load-archives'),
+  deleteArchiveItem: (id, fileIndex) => ipcRenderer.invoke('delete-archive-item', { id, fileIndex }),
+  restoreArchiveItem: (item, fileIndex) => ipcRenderer.invoke('restore-archive-item', { item, fileIndex }),
+  onArchivesUpdated: (callback) => ipcRenderer.on('archives-updated', () => callback()),
+  openUrl: (url) => ipcRenderer.send('open-url', url)
 });

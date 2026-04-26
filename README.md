@@ -14,9 +14,13 @@
 - 📅 **Multi-dimensional View**: Organize and view tasks across "Day, Week, and Month" dimensions.
 - 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
 - 🛠️ **Advanced Management**: Dedicated management window with real-time search, inline editing, and multi-column sorting.
-- 💾 **Smart Backup**: Automated 5-file rotating backup system ensures your data is never lost.
+- 📥 **Smart Archive System**: 
+  - **Auto-Archive**: Completed tasks are automatically moved to the archive after a set duration (1 day for Daily, 7 days for Weekly, 30 days for Monthly tasks).
+  - **Dedicated Viewer**: Manage archived tasks with search, filtering, and permanent deletion.
+  - **Undo Support**: Accidents happen—restore deleted or archived tasks with one click.
+- 🔗 **Clickable Resources**: URLs in task descriptions are automatically detected and clickable, opening directly in your default browser.
 - 🛡️ **Privacy Focused**: 100% local data storage. No servers, no tracking, complete privacy.
-- 🌐 **Multi-language**: Fully supports both Traditional Chinese and English.
+- 🌐 **Real-time Sync**: Multi-language support with instant synchronization across all windows.
 
 ---
 

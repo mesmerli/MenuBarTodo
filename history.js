@@ -15,6 +15,32 @@ let sortAsc = false;
 let deletedHistory = []; // Stack of deleted tasks (up to 10)
 let isSaving = false;
 
+function renderTaskText(container, text) {
+  container.innerHTML = '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  parts.forEach(part => {
+    if (part.match(urlRegex)) {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'task-link';
+      a.textContent = part;
+      a.style.color = 'var(--accent)';
+      a.style.textDecoration = 'underline';
+      a.style.cursor = 'pointer';
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window.api.openUrl(part);
+      });
+      container.appendChild(a);
+    } else {
+      container.appendChild(document.createTextNode(part));
+    }
+  });
+}
+
 async function init() {
   await window.i18n.init();
   await loadData();
@@ -119,7 +145,7 @@ async function init() {
   clearAllBtn.addEventListener('click', async () => {
     const completedTodos = todos.filter(t => t.completed);
     if (completedTodos.length > 0) {
-      window.api.backupTodos(completedTodos);
+      window.api.archiveTodos(completedTodos);
       deletedHistory.push(completedTodos);
       if (deletedHistory.length > 10) deletedHistory.shift();
       undoBtn.disabled = false;
@@ -143,6 +169,13 @@ async function init() {
       renderTable();
     }
   });
+
+  const archiveBtn = document.getElementById('archive-btn');
+  if (archiveBtn) {
+    archiveBtn.addEventListener('click', () => {
+      window.api.openArchiveWindow();
+    });
+  }
 
   langBtn.addEventListener('click', async () => {
     const newLang = window.i18n.lang === 'zh-TW' ? 'en' : 'zh-TW';
@@ -274,12 +307,14 @@ function renderTable() {
     deleteBtn.className = 'delete-icon-btn';
     deleteBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
+        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+        <rect x="1" y="3" width="22" height="5"></rect>
+        <polyline points="10 12 12 14 14 12"></polyline>
+        <line x1="12" y1="8" x2="12" y2="14"></line>
       </svg>
     `;
     deleteBtn.addEventListener('click', async () => {
-      window.api.backupTodos([todo]);
+      window.api.archiveTodos([todo]);
       deletedHistory.push([todo]);
       if (deletedHistory.length > 10) deletedHistory.shift();
       undoBtn.disabled = false;
@@ -301,9 +336,12 @@ function renderTable() {
     `;
 
     const textCell = tr.querySelector('.text-cell');
-    textCell.textContent = todo.text;
+    renderTaskText(textCell, todo.text);
     textCell.style.cursor = 'text';
-    textCell.addEventListener('click', () => {
+    textCell.addEventListener('click', (e) => {
+      // Don't trigger if clicking a link
+      if (e.target.tagName === 'A') return;
+      
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'edit-input';

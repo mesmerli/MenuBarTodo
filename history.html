@@ -20,6 +20,14 @@
           <span data-i18n="setting-auto-launch">開機時自動啟動</span>
         </label>
         <button id="lang-btn" class="icon-action-btn" title="切換語言 / Language" style="font-size: 14px; padding: 4px 10px;">🌐</button>
+        <button id="archive-btn" class="icon-action-btn" title="開啟封存庫 / Open Archive" style="font-size: 14px; padding: 4px 10px; display: flex; align-items: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11"></path>
+            <path d="M1 8l11-5 11 5"></path>
+            <path d="M1 8v3h22V8"></path>
+            <path d="M10 15h4"></path>
+          </svg>
+        </button>
         <button id="undo-btn" class="icon-action-btn" disabled title="復原刪除 / Undo Delete" style="padding: 4px 10px; display: flex; align-items: center;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 7v6h6"></path>
@@ -32,13 +40,20 @@
 
     <div class="input-row" style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px;">
       <div class="add-todo-container" style="flex: 1;">
-        <div class="input-wrapper">
-          <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="width: 100%; padding: 10px 40px 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--item-bg); color: var(--text-primary); font-size: 14px; outline: none; border-color: transparent; transition: border-color 0.2s;">
+        <div class="input-wrapper" style="position: relative; display: flex; align-items: center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-secondary); pointer-events: none;">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
+          <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="width: 100%; padding: 10px 40px 10px 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--item-bg); color: var(--text-primary); font-size: 14px; outline: none; border-color: transparent; transition: border-color 0.2s;">
           <button id="voice-btn" class="voice-btn" title="Voice Input" style="right: 8px;">🎤</button>
         </div>
       </div>
-      <div class="search-box" style="flex: 0 0 250px;">
-        <input type="text" id="search-input" data-i18n="search-placeholder" placeholder="搜尋任務內容..." autocomplete="off" style="width: 100%; padding: 10px 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--item-bg); color: var(--text-primary); font-size: 13px; outline: none;">
+      <div class="search-box" style="flex: 0 0 250px; position: relative; display: flex; align-items: center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-secondary); pointer-events: none;">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" data-i18n="search-placeholder" placeholder="搜尋任務內容..." autocomplete="off" style="width: 100%; padding: 10px 16px 10px 34px; border-radius: 16px; border: 1px solid var(--border); background: var(--item-bg); color: var(--text-primary); font-size: 13px; outline: none;">
       </div>
     </div>
     
