@@ -1,0 +1,65 @@
+{
+  "name": "menubar-todo",
+  "version": "1.0.0",
+  "description": "A minimal menubar todo app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist-run": "npm run dist && start \"\" \"dist\\win-unpacked\\MenuBar Todo.exe\"",
+    "test": "playwright test"
+  },
+  "build": {
+    "appId": "com.mesme.menubartodo",
+    "productName": "MenuBar Todo",
+    "compression": "maximum",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "history.js",
+      "locales.js",
+      "index.html",
+      "history.html",
+      "about.html",
+      "style.css",
+      "history.css",
+      "icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "appx"
+      ],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "appx": {
+      "identityName": "mesmerli.MenuBarTodo",
+      "publisher": "CN=B50F36C9-7E5E-4652-A715-0185D35ADE64",
+      "publisherDisplayName": "mesmerli",
+      "displayName": "MenuBar Todo",
+      "languages": [
+        "zh-TW",
+        "en-US"
+      ],
+      "addAutoLaunchExtension": true
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "keywords": [],
+  "author": "mesmerli",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1"
+  }
+}
