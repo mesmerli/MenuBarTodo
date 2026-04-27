@@ -33,4 +33,9 @@ logs/
 test-results/
 playwright-report/
 blob-report/
-playwright/.cache/
+# Models
+models/*/
+!models/*.tar.gz
+
+# Local Debug Logs
+app-debug.log

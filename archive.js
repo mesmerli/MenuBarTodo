@@ -7,7 +7,7 @@ let archives = [];
 let deletedHistory = [];
 let searchQuery = '';
 let currentFilter = 'all';
-let sortColumn = 'deletedAt';
+let sortColumn = 'archiveAt';
 let sortAsc = false;
 
 function renderTaskText(container, text) {
@@ -124,6 +124,10 @@ function renderTable() {
   displayArchives.sort((a, b) => {
     let valA, valB;
     switch(sortColumn) {
+      case 'completed':
+        valA = a.completed ? 1 : 0;
+        valB = b.completed ? 1 : 0;
+        break;
       case 'text':
         valA = a.text.toLowerCase();
         valB = b.text.toLowerCase();
@@ -136,13 +140,13 @@ function renderTable() {
         valA = a.createdAt || a.id;
         valB = b.createdAt || b.id;
         break;
-      case 'deletedAt':
-        valA = a.deletedAt || 0;
-        valB = b.deletedAt || 0;
+      case 'dueDate':
+        valA = a.dueDate || 0;
+        valB = b.dueDate || 0;
         break;
       default:
-        valA = a.deletedAt || 0;
-        valB = b.deletedAt || 0;
+        valA = a.dueDate || 0;
+        valB = b.dueDate || 0;
     }
     
     if (valA < valB) return sortAsc ? -1 : 1;
@@ -152,6 +156,12 @@ function renderTable() {
 
   displayArchives.forEach(item => {
     const tr = document.createElement('tr');
+    
+    const statusCell = document.createElement('td');
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `status-badge ${item.completed ? 'completed' : 'active'}`;
+    statusBadge.textContent = window.i18n.t(item.completed ? 'status-completed' : 'status-active');
+    statusCell.appendChild(statusBadge);
     
     const textCell = document.createElement('td');
     textCell.className = 'text-cell';
@@ -163,14 +173,37 @@ function renderTable() {
     const createdCell = document.createElement('td');
     createdCell.textContent = formatDate(item.createdAt);
     
-    const deletedCell = document.createElement('td');
-    deletedCell.textContent = formatDate(item.deletedAt);
+    const dueCell = document.createElement('td');
+    dueCell.textContent = item.dueDate ? formatDate(item.dueDate) : '-';
+    
+    tr.appendChild(statusCell);
+    tr.appendChild(textCell);
+    tr.appendChild(dimCell);
+    tr.appendChild(createdCell);
+    tr.appendChild(dueCell);
     
     const actionCell = document.createElement('td');
     actionCell.className = 'action-cell';
     
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'restore-btn';
+    restoreBtn.title = 'Restore Task';
+    restoreBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+      </svg>
+    `;
+    restoreBtn.addEventListener('click', async () => {
+      const success = await window.api.restoreArchiveItem(item, item._fileIndex);
+      if (success) {
+        await loadData();
+      }
+    });
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-perm-btn';
+    deleteBtn.title = 'Delete Permanently';
     deleteBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"></polyline>
@@ -189,12 +222,8 @@ function renderTable() {
       }
     });
     
+    actionCell.appendChild(restoreBtn);
     actionCell.appendChild(deleteBtn);
-    
-    tr.appendChild(textCell);
-    tr.appendChild(dimCell);
-    tr.appendChild(createdCell);
-    tr.appendChild(deletedCell);
     tr.appendChild(actionCell);
     
     tbody.appendChild(tr);

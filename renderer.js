@@ -3,10 +3,92 @@ const list = document.getElementById('todo-list');
 const tabBtns = document.querySelectorAll('.tab');
 const settingsBtn = document.getElementById('settings-btn');
 const mainUndoBtn = document.getElementById('main-undo-btn');
+const pomoTimerDisplay = document.getElementById('pomo-timer');
+const pomoBtn = document.getElementById('pomo-btn');
 
 let todos = [];
 let deletedHistory = [];
 let currentDimension = 'day';
+
+// Pomodoro Logic (Main Process Sync)
+let pomoDuration = 30; 
+let pomoTime = pomoDuration * 60;
+let pomoRunning = false;
+
+function updatePomoDisplay(state) {
+  if (state) {
+    pomoTime = state.pomoTime;
+    pomoRunning = state.pomoRunning;
+    pomoDuration = state.pomoDuration;
+  }
+  const m = Math.floor(pomoTime / 60).toString().padStart(2, '0');
+  const s = (pomoTime % 60).toString().padStart(2, '0');
+  pomoTimerDisplay.textContent = `${m}:${s}`;
+  
+  if (pomoRunning) {
+    pomoBtn.style.color = 'var(--accent)';
+    if (pomoTime <= 10 && pomoTime > 0) {
+      pomoTimerDisplay.classList.add('pomo-flashing');
+    } else {
+      pomoTimerDisplay.classList.remove('pomo-flashing');
+    }
+  } else {
+    pomoBtn.style.color = 'inherit';
+    if (pomoTime === 0) {
+      pomoTimerDisplay.classList.add('pomo-flashing');
+    } else {
+      pomoTimerDisplay.classList.remove('pomo-flashing');
+    }
+  }
+}
+
+if (pomoBtn) {
+  pomoBtn.addEventListener('click', () => window.api.pomoToggle());
+}
+
+if (pomoTimerDisplay) {
+  pomoTimerDisplay.addEventListener('click', () => {
+    if (pomoRunning) return; 
+    
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = pomoDuration;
+    input.style.width = '40px';
+    input.style.fontSize = '14px';
+    input.style.color = 'var(--accent)';
+    input.style.background = 'transparent';
+    input.style.border = 'none';
+    input.style.outline = 'none';
+    input.style.fontFamily = 'monospace';
+    input.min = 1;
+    
+    const savePomo = () => {
+      const val = parseInt(input.value);
+      if (!isNaN(val) && val > 0) {
+        window.api.pomoSetDuration(val);
+      } else {
+        updatePomoDisplay();
+      }
+    };
+
+    input.addEventListener('blur', savePomo);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+      if (e.key === 'Escape') {
+        input.removeEventListener('blur', savePomo);
+        updatePomoDisplay();
+      }
+    });
+
+    pomoTimerDisplay.innerHTML = '';
+    pomoTimerDisplay.appendChild(input);
+    input.focus();
+    input.select();
+  });
+}
+
+window.api.onPomoTick((state) => updatePomoDisplay(state));
+window.api.pomoGetState();
 
 function renderTaskText(container, text) {
   container.innerHTML = '';
@@ -192,17 +274,70 @@ function renderTodos() {
     li.appendChild(checkbox);
     li.appendChild(textSpan);
     
-    if (todo.completed && todo.completedAt) {
-      const timeSpan = document.createElement('span');
-      timeSpan.className = 'completed-time';
-      const date = new Date(todo.completedAt);
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      const hours = date.getHours().toString().padStart(2, '0');
-      const mins = date.getMinutes().toString().padStart(2, '0');
-      timeSpan.textContent = `${month}/${day} ${hours}:${mins}`;
-      li.appendChild(timeSpan);
-    }
+    // Due Date Display
+    const dueSpan = document.createElement('span');
+    dueSpan.className = 'due-date';
+    // Fallback for old tasks without dueDate
+    const defaultOffset = todo.dimension === 'week' ? 7*24*60*60*1000 : (todo.dimension === 'month' ? 30*24*60*60*1000 : 24*60*60*1000);
+    const dueDateVal = todo.dueDate || (todo.createdAt + defaultOffset);
+    const dueDate = new Date(dueDateVal);
+    
+    const isOverdue = !todo.completed && Date.now() > dueDateVal;
+    const month = (dueDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = dueDate.getDate().toString().padStart(2, '0');
+    const hours = dueDate.getHours().toString().padStart(2, '0');
+    const mins = dueDate.getMinutes().toString().padStart(2, '0');
+    dueSpan.textContent = `${month}/${day} ${hours}:${mins}${isOverdue ? ' !' : ''}`;
+    if (isOverdue) dueSpan.classList.add('overdue');
+    
+    dueSpan.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const current = new Date(dueDateVal);
+      const y = current.getFullYear();
+      const m = (current.getMonth() + 1).toString().padStart(2, '0');
+      const d = current.getDate().toString().padStart(2, '0');
+      const h = current.getHours().toString().padStart(2, '0');
+      const min = current.getMinutes().toString().padStart(2, '0');
+
+      const input = document.createElement('input');
+      input.type = 'datetime-local';
+      input.className = 'edit-input';
+      input.value = `${y}-${m}-${d}T${h}:${min}`;
+      input.style.width = '160px';
+      input.style.color = 'var(--text-primary)';
+      input.style.background = 'rgba(0,0,0,0.3)';
+      input.style.border = '1px solid var(--accent)';
+      input.style.borderRadius = '4px';
+      
+      const saveDue = async () => {
+        if (input.value) {
+          const newDate = new Date(input.value);
+          if (!isNaN(newDate.getTime())) {
+            const index = todos.findIndex(t => t.id === todo.id);
+            if (index !== -1) {
+              todos[index].dueDate = newDate.getTime();
+              await window.api.saveTodos(todos);
+            }
+          }
+        }
+        renderTodos();
+      };
+
+      input.addEventListener('blur', saveDue);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+          input.removeEventListener('blur', saveDue);
+          renderTodos();
+        }
+      });
+
+      dueSpan.innerHTML = '';
+      dueSpan.appendChild(input);
+      if (input.showPicker) input.showPicker();
+      input.focus();
+    });
+    li.appendChild(dueSpan);
     
     li.appendChild(deleteBtn);
     list.appendChild(li);
@@ -211,12 +346,18 @@ function renderTodos() {
 
 async function handleNewTodo(text) {
   if (!text) return;
+  const now = Date.now();
+  let dueOffset = 24 * 60 * 60 * 1000; // default 1 day
+  if (currentDimension === 'week') dueOffset = 7 * 24 * 60 * 60 * 1000;
+  if (currentDimension === 'month') dueOffset = 30 * 24 * 60 * 60 * 1000;
+
   todos.unshift({
-    id: Date.now(),
+    id: now,
     text: text,
     completed: false,
     dimension: currentDimension,
-    createdAt: Date.now()
+    createdAt: now,
+    dueDate: now + dueOffset
   });
   renderTodos();
   await window.api.saveTodos(todos);
@@ -230,35 +371,104 @@ input.addEventListener('keydown', async (e) => {
   }
 });
 
+// Offline Voice Recognition with Vosk-WASM
 const voiceBtn = document.getElementById('voice-btn');
-if (voiceBtn && ('webkitSpeechRecognition' in window)) {
-  const recognition = new webkitSpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  
-  recognition.onstart = () => {
-    voiceBtn.classList.add('listening');
-  };
+let model = null;
+let recognizer = null;
+let audioContext = null;
+let source = null;
+let processor = null;
 
-  recognition.onend = () => {
-    voiceBtn.classList.remove('listening');
-  };
-
-  recognition.onresult = async (event) => {
-    const transcript = event.results[0][0].transcript;
-    if (transcript) {
-      input.value = transcript;
-      // Auto save after voice recognition
-      setTimeout(async () => {
-        input.value = '';
-        await handleNewTodo(transcript);
-      }, 800);
+async function startVosk() {
+  try {
+    if (!model) {
+      voiceBtn.style.opacity = '0.5';
+      const modelPath = window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz';
+      console.log('Vosk: Starting model load from', modelPath);
+      model = await Vosk.createModel(modelPath);
+      console.log('Vosk: Model loaded successfully!');
+      voiceBtn.style.opacity = '1';
     }
-  };
 
-  voiceBtn.addEventListener('click', () => {
-    recognition.lang = window.i18n.lang === 'zh-TW' ? 'zh-TW' : 'en-US';
-    recognition.start();
+    if (!recognizer) {
+      recognizer = new model.KaldiRecognizer(16000);
+      recognizer.setWords(true);
+      
+      recognizer.on("result", (message) => {
+        const result = message.result;
+        if (result.text) {
+          input.value = result.text;
+          setTimeout(async () => {
+            const text = input.value.trim();
+            if (text) {
+              input.value = '';
+              stopVosk();
+              await handleNewTodo(text);
+            }
+          }, 800);
+        }
+      });
+
+      recognizer.on("partialresult", (message) => {
+        const partial = message.result.partial;
+        if (partial) {
+          input.value = partial;
+        }
+      });
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        channelCount: 1,
+        sampleRate: 16000,
+      },
+    });
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    source = audioContext.createMediaStreamSource(stream);
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    processor.onaudioprocess = (event) => {
+      recognizer.acceptWaveform(event.inputBuffer);
+    };
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    
+    voiceBtn.classList.add('listening');
+  } catch (err) {
+    console.error('Vosk Start Error:', err);
+    alert('Failed to start voice recognition. Please ensure models are installed in /models folder.');
+    voiceBtn.classList.remove('listening');
+  }
+}
+
+function stopVosk() {
+  if (processor) {
+    processor.disconnect();
+    processor = null;
+  }
+  if (source) {
+    source.disconnect();
+    source = null;
+  }
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+  voiceBtn.classList.remove('listening');
+}
+
+if (voiceBtn) {
+  voiceBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (voiceBtn.classList.contains('listening')) {
+      stopVosk();
+    } else {
+      await startVosk();
+    }
   });
 }
 

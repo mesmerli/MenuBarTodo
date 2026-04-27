@@ -85,12 +85,19 @@ async function init() {
 
   async function handleNewHistoryTodo(text) {
     if (!text) return;
+    const now = Date.now();
+    const dim = currentFilter === 'all' ? 'day' : currentFilter;
+    let dueOffset = 24 * 60 * 60 * 1000;
+    if (dim === 'week') dueOffset = 7 * 24 * 60 * 60 * 1000;
+    if (dim === 'month') dueOffset = 30 * 24 * 60 * 60 * 1000;
+
     const newTodo = {
-      id: Date.now(),
+      id: now,
       text,
       completed: false,
-      dimension: currentFilter === 'all' ? 'day' : currentFilter,
-      createdAt: Date.now()
+      dimension: dim,
+      createdAt: now,
+      dueDate: now + dueOffset
     };
     todos.unshift(newTodo);
     isSaving = true;
@@ -112,33 +119,103 @@ async function init() {
   }
 
   const voiceBtn = document.getElementById('voice-btn');
-  if (voiceBtn && ('webkitSpeechRecognition' in window)) {
-    const recognition = new webkitSpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    
-    recognition.onstart = () => {
-      voiceBtn.classList.add('listening');
-    };
+  // Offline Voice Recognition with Vosk-WASM
+  let model = null;
+  let recognizer = null;
+  let audioContext = null;
+  let source = null;
+  let processor = null;
 
-    recognition.onend = () => {
-      voiceBtn.classList.remove('listening');
-    };
-
-    recognition.onresult = async (event) => {
-      const transcript = event.results[0][0].transcript;
-      if (transcript) {
-        todoInput.value = transcript;
-        setTimeout(async () => {
-          todoInput.value = '';
-          await handleNewHistoryTodo(transcript);
-        }, 800);
+  async function startVosk() {
+    try {
+      if (!model) {
+        voiceBtn.style.opacity = '0.5';
+        const modelPath = window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz';
+        console.log('History Vosk: Starting model load from', modelPath);
+        model = await Vosk.createModel(modelPath);
+        console.log('History Vosk: Model loaded successfully!');
+        voiceBtn.style.opacity = '1';
       }
-    };
 
-    voiceBtn.addEventListener('click', () => {
-      recognition.lang = window.i18n.lang === 'zh-TW' ? 'zh-TW' : 'en-US';
-      recognition.start();
+      if (!recognizer) {
+        recognizer = new model.KaldiRecognizer(16000);
+        recognizer.setWords(true);
+        
+        recognizer.on("result", (message) => {
+          const result = message.result;
+          if (result.text) {
+            todoInput.value = result.text;
+            setTimeout(async () => {
+              const text = todoInput.value.trim();
+              if (text) {
+                todoInput.value = '';
+                stopVosk();
+                await handleNewHistoryTodo(text);
+              }
+            }, 800);
+          }
+        });
+
+        recognizer.on("partialresult", (message) => {
+          const partial = message.result.partial;
+          if (partial) {
+            todoInput.value = partial;
+          }
+        });
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+          sampleRate: 16000,
+        },
+      });
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      source = audioContext.createMediaStreamSource(stream);
+      processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+      processor.onaudioprocess = (event) => {
+        recognizer.acceptWaveform(event.inputBuffer);
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+      
+      voiceBtn.classList.add('listening');
+    } catch (err) {
+      console.error('Vosk Start Error:', err);
+      alert('Failed to start voice recognition. Please ensure models are installed in /models folder.');
+      voiceBtn.classList.remove('listening');
+    }
+  }
+
+  function stopVosk() {
+    if (processor) {
+      processor.disconnect();
+      processor = null;
+    }
+    if (source) {
+      source.disconnect();
+      source = null;
+    }
+    if (audioContext) {
+      audioContext.close();
+      audioContext = null;
+    }
+    voiceBtn.classList.remove('listening');
+  }
+
+  if (voiceBtn) {
+    voiceBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (voiceBtn.classList.contains('listening')) {
+        stopVosk();
+      } else {
+        await startVosk();
+      }
     });
   }
   
@@ -261,9 +338,9 @@ function renderTable() {
         valA = a.createdAt || a.id;
         valB = b.createdAt || b.id;
         break;
-      case 'completedAt':
-        valA = a.completedAt || 0;
-        valB = b.completedAt || 0;
+      case 'dueDate':
+        valA = a.dueDate || (a.createdAt + (a.dimension === 'week' ? 7*24*60*60*1000 : (a.dimension === 'month' ? 30*24*60*60*1000 : 24*60*60*1000)));
+        valB = b.dueDate || (b.createdAt + (b.dimension === 'week' ? 7*24*60*60*1000 : (b.dimension === 'month' ? 30*24*60*60*1000 : 24*60*60*1000)));
         break;
       default:
         valA = a.completedAt || a.createdAt || a.id;
@@ -326,14 +403,70 @@ function renderTable() {
       renderTable();
     });
 
+    const dueDateVal = todo.dueDate || (todo.createdAt + (todo.dimension === 'week' ? 7*24*60*60*1000 : (todo.dimension === 'month' ? 30*24*60*60*1000 : 24*60*60*1000)));
+    const isOverdue = !todo.completed && Date.now() > dueDateVal;
+
     tr.innerHTML = `
       <td class="status-cell"></td>
       <td class="text-cell"></td>
       <td>${getDimensionLabel(todo.dimension || 'day')}</td>
       <td>${formatDate(todo.createdAt)}</td>
-      <td>${formatDate(todo.completedAt)}</td>
+      <td class="due-cell ${isOverdue ? 'overdue' : ''}" style="cursor: pointer; ${isOverdue ? 'color: var(--danger); font-weight: bold;' : ''}">
+        ${formatDate(dueDateVal)}${isOverdue ? ' !' : ''}
+      </td>
       <td class="action-cell"></td>
     `;
+
+    const dueCell = tr.querySelector('.due-cell');
+    dueCell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const current = new Date(dueDateVal);
+      const y = current.getFullYear();
+      const m = (current.getMonth() + 1).toString().padStart(2, '0');
+      const d = current.getDate().toString().padStart(2, '0');
+      const h = current.getHours().toString().padStart(2, '0');
+      const min = current.getMinutes().toString().padStart(2, '0');
+      
+      const input = document.createElement('input');
+      input.type = 'datetime-local';
+      input.className = 'edit-input';
+      input.value = `${y}-${m}-${d}T${h}:${min}`;
+      input.style.width = '180px';
+      input.style.color = 'var(--text-primary)';
+      input.style.background = 'rgba(0,0,0,0.3)';
+      input.style.border = '1px solid var(--accent)';
+      input.style.borderRadius = '4px';
+      
+      const saveDue = async () => {
+        if (input.value) {
+          const newDate = new Date(input.value);
+          if (!isNaN(newDate.getTime())) {
+            const idx = todos.findIndex(t => t.id === todo.id);
+            if (idx !== -1) {
+              todos[idx].dueDate = newDate.getTime();
+              isSaving = true;
+              await window.api.saveTodos(todos);
+              isSaving = false;
+            }
+          }
+        }
+        renderTable();
+      };
+
+      input.addEventListener('blur', saveDue);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') input.blur();
+        if (e.key === 'Escape') {
+          input.removeEventListener('blur', saveDue);
+          renderTable();
+        }
+      });
+
+      dueCell.innerHTML = '';
+      dueCell.appendChild(input);
+      if (input.showPicker) input.showPicker();
+      input.focus();
+    });
 
     const textCell = tr.querySelector('.text-cell');
     renderTaskText(textCell, todo.text);

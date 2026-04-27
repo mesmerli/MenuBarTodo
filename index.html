@@ -12,6 +12,16 @@
       <button class="tab" data-dimension="week" data-i18n="tab-week">週</button>
       <button class="tab" data-dimension="month" data-i18n="tab-month">月</button>
       <div style="flex:1"></div>
+      <!-- Pomodoro Section -->
+      <div class="pomodoro-container" style="display: flex; align-items: center; margin-right: 8px;">
+        <span id="pomo-timer">30:00</span>
+        <button id="pomo-btn" class="settings-btn" title="Start Pomodoro">
+          <svg id="pomo-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </button>
+      </div>
       <button id="main-undo-btn" class="settings-btn" title="復原刪除 / Undo Delete" style="margin-right: 4px;" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 7v6h6"></path>
@@ -30,13 +40,14 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; color: var(--text-secondary); pointer-events: none;">
           <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
         </svg>
-        <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="padding-left: 34px;">
+        <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="padding-left: 34px; padding-right: 40px; width: 100%;">
         <button id="voice-btn" class="voice-btn" title="Voice Input">🎤</button>
       </div>
     </div>
     <ul id="todo-list"></ul>
   </div>
   <script src="locales.js"></script>
+  <script src="lib/vosk.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

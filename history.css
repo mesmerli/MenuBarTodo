@@ -146,6 +146,16 @@ th, td {
   font-size: 14px;
 }
 
+td {
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.5;
+}
+
+td:nth-child(4), td:nth-child(5) {
+  white-space: nowrap;
+}
+
 th {
   color: var(--text-secondary);
   font-weight: 500;
@@ -271,12 +281,111 @@ tr.completed td:nth-child(2) {
 }
 
 .voice-btn.listening {
-  color: #ff5e5e;
+  color: #ff3b3b;
+  background: rgba(255, 59, 59, 0.15);
   animation: pulse 1s infinite;
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.2); opacity: 0.7; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.5); }
+  50% { transform: scale(1.2); box-shadow: 0 0 8px 4px rgba(255, 59, 59, 0.3); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 59, 0); }
 }
+
+/* Archive Actions */
+.restore-btn {
+  background-color: transparent;
+  color: #fff;
+  border: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 4px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.restore-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent);
+}
+.restore-btn svg {
+  stroke: #fff;
+}
+.restore-btn:hover svg {
+  stroke: var(--accent);
+}
+
+.delete-perm-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.delete-perm-btn:hover {
+  color: var(--danger);
+  background: rgba(255, 94, 94, 0.1);
+}
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Switch styling */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border);
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent);
+}
+
+input:checked + .slider:before {
+  transform: translateX(14px);
+}
+

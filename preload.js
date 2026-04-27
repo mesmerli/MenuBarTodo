@@ -17,5 +17,10 @@ contextBridge.exposeInMainWorld('api', {
   deleteArchiveItem: (id, fileIndex) => ipcRenderer.invoke('delete-archive-item', { id, fileIndex }),
   restoreArchiveItem: (item, fileIndex) => ipcRenderer.invoke('restore-archive-item', { item, fileIndex }),
   onArchivesUpdated: (callback) => ipcRenderer.on('archives-updated', () => callback()),
-  openUrl: (url) => ipcRenderer.send('open-url', url)
+  openUrl: (url) => ipcRenderer.send('open-url', url),
+  requestShowWindow: () => ipcRenderer.send('request-show-window'),
+  pomoToggle: () => ipcRenderer.send('pomo-toggle'),
+  pomoSetDuration: (mins) => ipcRenderer.send('pomo-set-duration', mins),
+  pomoGetState: () => ipcRenderer.send('pomo-get-state'),
+  onPomoTick: (callback) => ipcRenderer.on('pomo-tick', (event, state) => callback(state))
 });

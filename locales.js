@@ -11,7 +11,7 @@ const translations = {
     'col-status': 'Status',
     'col-dim': 'Dimension',
     'col-created': 'Created At',
-    'col-completed': 'Completed At',
+    'col-due': 'Due Date',
     'dim-day': 'Day',
     'dim-week': 'Week',
     'dim-month': 'Month',
@@ -28,7 +28,10 @@ const translations = {
     'setting-auto-launch': 'Launch at login',
     'archive-title': 'Archived Tasks',
     'btn-archive': 'Open Archive',
-    'col-deleted': 'Archived At'
+    'col-deleted': 'Archived At',
+    'tray-show': 'Show Main Window',
+    'tray-about': 'About',
+    'tray-exit': 'Exit'
   },
   'zh-TW': {
     'tab-day': '日',
@@ -42,7 +45,7 @@ const translations = {
     'col-status': '狀態',
     'col-dim': '維度',
     'col-created': '建立時間',
-    'col-completed': '完成時間',
+    'col-due': '到期時間',
     'dim-day': '日',
     'dim-week': '週',
     'dim-month': '月',
@@ -59,7 +62,10 @@ const translations = {
     'setting-auto-launch': '開機時自動啟動',
     'archive-title': '封存任務',
     'btn-archive': '開啟封存庫',
-    'col-deleted': '封存時間'
+    'col-deleted': '封存時間',
+    'tray-show': '顯示主視窗',
+    'tray-about': '關於',
+    'tray-exit': '結束'
   }
 };
 

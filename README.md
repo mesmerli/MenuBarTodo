@@ -10,7 +10,7 @@
 ## ✨ Key Features
 
 - 🚀 **Instant Access**: Toggle the window instantly with the global shortcut `Ctrl + Shift + Space`.
-- 🎙️ **Voice Input**: Built-in smart speech recognition—capture tasks as fast as you can speak.
+- 🎙️ **Offline Voice Input**: Fully offline speech recognition powered by **Vosk-WASM** — no cloud services, no API keys, complete privacy.
 - 📅 **Multi-dimensional View**: Organize and view tasks across "Day, Week, and Month" dimensions.
 - 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
 - 🛠️ **Advanced Management**: Dedicated management window with real-time search, inline editing, and multi-column sorting.
@@ -20,7 +20,7 @@
   - **Undo Support**: Accidents happen—restore deleted or archived tasks with one click.
 - 🔗 **Clickable Resources**: URLs in task descriptions are automatically detected and clickable, opening directly in your default browser.
 - 🛡️ **Privacy Focused**: 100% local data storage. No servers, no tracking, complete privacy.
-- 🌐 **Real-time Sync**: Multi-language support with instant synchronization across all windows.
+- 🌐 **Real-time Sync**: Multi-language support (English / 繁體中文) with instant synchronization across all windows.
 
 ---
 
@@ -30,6 +30,7 @@
 | :--- | :--- |
 | **Show / Hide App** | `Ctrl + Shift + Space` |
 | **Create Task** | `Enter` (inside input field) |
+| **Voice Input** | 🎤 button (click to start/stop) |
 | **Cancel / Hide** | `Esc` |
 
 ---
@@ -46,18 +47,28 @@ cd MenuBarTodo
 npm install
 ```
 
-### 3. Run in Development
+### 3. Voice Model Setup
+Download Vosk models and place them in the `models/` directory, then package them:
+```bash
+# Place model files in models/en/ and models/zh/
+npm run pack-models
+```
+
+### 4. Run in Development
 ```bash
 npm start
 ```
 
-### 4. Build Production Executable
+### 5. Build Production Executable
 ```bash
-# Builds both portable and installer versions
+# Build and launch
+npm run dist-run
+
+# Build only (portable + installer)
 npm run dist
 ```
 
-### 5. Run E2E Tests
+### 6. Run E2E Tests
 This project uses Playwright for automated testing:
 ```bash
 npm test
@@ -69,12 +80,23 @@ npm test
 
 - **Core**: Electron, Node.js
 - **Frontend**: HTML5, Vanilla CSS, JavaScript
-- **Testing**: Playwright
+- **Voice Recognition**: Vosk-WASM (offline, WebAssembly-based)
+- **Testing**: Playwright (26 E2E tests)
 - **Bundling**: Electron Builder
 
 ---
 
 ## 📜 Changelog
+
+### [1.2.0] - 2026-04-28
+- **Added**: Offline voice recognition via **Vosk-WASM** — no internet or API keys required.
+- **Added**: Custom `local-model://` protocol for secure model file serving within Electron.
+- **Added**: Pre-built `tar.gz` model packaging with `npm run pack-models` script.
+- **Added**: Application debug logging to `app-debug.log` for troubleshooting.
+- **Added**: DevTools access from system tray menu (detached mode).
+- **Added**: Red pulsing glow animation on microphone button during recording.
+- **Improved**: Expanded E2E test suite from 4 to 26 tests covering all major features.
+- **Removed**: Deprecated `webkitSpeechRecognition` / Web Speech API dependency.
 
 ### [1.1.0] - 2026-04-27
 - **Added**: New Archive Window with dimension tabs, search, and undo functionality.
@@ -102,3 +124,4 @@ This project is licensed under the [ISC License](LICENSE).
 ---
 
 **Developed with ❤️ by [mesmerli](https://github.com/mesmerli)**
+

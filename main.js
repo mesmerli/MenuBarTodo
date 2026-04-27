@@ -1,6 +1,11 @@
-const { app, BrowserWindow, Tray, globalShortcut, ipcMain, nativeImage, screen, Menu, dialog, shell } = require('electron');
+const { app, BrowserWindow, Tray, globalShortcut, ipcMain, nativeImage, screen, Menu, dialog, shell, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Register local-model as a privileged scheme to support Fetch API
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'local-model', privileges: { secure: true, standard: true, supportFetchAPI: true, bypassCSP: true, allowServiceWorkers: true } }
+]);
 
 const isTest = process.argv.includes('--test');
 const gotTheLock = isTest ? true : app.requestSingleInstanceLock();
@@ -22,10 +27,88 @@ let aboutWin = null;
 
 const storePath = path.join(app.getPath('userData'), 'todos.json');
 const configPath = path.join(app.getPath('userData'), 'config.json');
+const debugLogPath = path.join(app.getPath('userData'), 'app-debug.log');
+
+// Log to file function
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  try {
+    fs.appendFileSync(debugLogPath, logMessage);
+    console.log(message);
+  } catch (err) {
+    console.error('Failed to write to log file:', err);
+  }
+}
+
+logToFile('--- Application Start ---');
+logToFile(`UserData Path: ${app.getPath('userData')}`);
+logToFile(`Debug Log Path: ${debugLogPath}`);
+
+// Pomodoro State
+let pomoDuration = 30;
+let pomoTime = pomoDuration * 60;
+let pomoRunning = false;
+let pomoInterval = null;
+
+function broadcastPomoState() {
+  if (win) {
+    win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+  }
+}
+
+function startPomo() {
+  if (pomoInterval) clearInterval(pomoInterval);
+  pomoRunning = true;
+  pomoInterval = setInterval(() => {
+    if (pomoTime > 0) {
+      pomoTime--;
+      if (pomoTime === 10 || pomoTime === 0) {
+        showWindow();
+      }
+    } else {
+      stopPomo();
+    }
+    broadcastPomoState();
+  }, 1000);
+  broadcastPomoState();
+}
+
+function stopPomo() {
+  pomoRunning = false;
+  if (pomoInterval) clearInterval(pomoInterval);
+  pomoInterval = null;
+  broadcastPomoState();
+}
+
+ipcMain.on('pomo-toggle', () => {
+  if (pomoRunning) stopPomo();
+  else startPomo();
+});
+
+ipcMain.on('pomo-set-duration', (event, minutes) => {
+  pomoDuration = minutes;
+  pomoTime = minutes * 60;
+  broadcastPomoState();
+});
+
+ipcMain.on('pomo-get-state', (event) => {
+  event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+});
+
+let currentLang = 'zh-TW';
+try {
+  if (fs.existsSync(configPath)) {
+    const data = fs.readFileSync(configPath, 'utf8');
+    currentLang = JSON.parse(data).lang || 'zh-TW';
+  }
+} catch (e) {
+  console.error('Failed to load initial lang:', e);
+}
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 320,
+    width: 360,
     height: 450,
     show: false,
     frame: false,
@@ -56,6 +139,8 @@ function toggleWindow() {
 }
 
 function showWindow() {
+  if (!win || !tray) return;
+
   const trayPos = tray.getBounds();
   const winPos = win.getBounds();
   
@@ -76,12 +161,46 @@ function showWindow() {
   if (x + winPos.width > primaryDisplay.bounds.width) x = primaryDisplay.bounds.width - winPos.width - 10;
 
   win.setPosition(x, y, false);
+  
+  // Ensure it shows on top and on all workspaces
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.setAlwaysOnTop(true, 'screen-saver');
   win.show();
   win.focus();
+  
+  // Restore normal behavior after a short delay to allow interaction
+  setTimeout(() => {
+    if (win) win.setAlwaysOnTop(false);
+  }, 1000);
+
   win.webContents.send('window-show');
 }
 
 app.whenReady().then(() => {
+  // Register protocol for local models - serves pre-built tar.gz files
+  protocol.handle('local-model', async (request) => {
+    try {
+      const urlString = request.url.replace('local-model://', '');
+      const relativePath = decodeURIComponent(urlString);
+      
+      const baseDir = app.isPackaged ? process.resourcesPath : app.getAppPath();
+      const absolutePath = path.normalize(path.join(baseDir, relativePath));
+      
+      logToFile(`[Protocol] Request: ${request.url} -> ${absolutePath}`);
+      
+      if (fs.existsSync(absolutePath)) {
+        const { pathToFileURL } = require('url');
+        return await net.fetch(pathToFileURL(absolutePath).toString());
+      } else {
+        logToFile(`[Protocol] File not found: ${absolutePath}`);
+        return new Response('File Not Found', { status: 404 });
+      }
+    } catch (error) {
+      logToFile(`[Protocol] Error: ${error.message}`);
+      return new Response(`Internal Error: ${error.message}`, { status: 500 });
+    }
+  });
+
   createWindow();
 
   // Load the generated icon
@@ -95,10 +214,40 @@ app.whenReady().then(() => {
     toggleWindow();
   });
 
+  updateTrayMenu();
+
+  const ret = globalShortcut.register('CommandOrControl+Shift+Space', () => {
+    toggleWindow();
+  });
+  
+  if (!ret) {
+    console.log('Registration failed for CommandOrControl+Shift+Space');
+  }
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const translations = {
+    'en': { show: 'Show Main Window', about: 'About', exit: 'Exit', debug: 'Open DevTools' },
+    'zh-TW': { show: '顯示主視窗', about: '關於', exit: '結束', debug: '開發者工具' }
+  };
+  const t = translations[currentLang] || translations['zh-TW'];
+
   const contextMenu = Menu.buildFromTemplate([
-    { label: '顯示主視窗', click: () => showWindow() },
+    { label: t.show, click: () => showWindow() },
+    { label: t.debug, click: () => {
+      const focusedWin = BrowserWindow.getFocusedWindow() || win;
+      if (focusedWin) focusedWin.webContents.openDevTools({ mode: 'detach' });
+    }},
     { type: 'separator' },
-    { label: '關於', click: () => {
+    { label: t.about, click: () => {
       if (aboutWin) {
         aboutWin.focus();
         return;
@@ -121,24 +270,17 @@ app.whenReady().then(() => {
       aboutWin.loadFile('about.html');
       aboutWin.on('closed', () => { aboutWin = null; });
     }},
-    { label: '結束', click: () => { app.quit(); } }
+    { type: 'separator' },
+    { label: t.exit, click: () => app.quit() }
   ]);
   
   tray.setContextMenu(contextMenu);
+}
 
-  const ret = globalShortcut.register('CommandOrControl+Shift+Space', () => {
-    toggleWindow();
-  });
-  
-  if (!ret) {
-    console.log('Registration failed for CommandOrControl+Shift+Space');
+ipcMain.on('request-show-window', () => {
+  if (win && tray) {
+    showWindow();
   }
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
 });
 
 app.on('window-all-closed', () => {
@@ -227,7 +369,7 @@ function archiveTodosInternal(todosToArchive) {
 
     const newArchives = todosToArchive.map(t => ({ 
       ...t, 
-      deletedAt: t.deletedAt || Date.now() 
+      archiveAt: t.archiveAt || Date.now() 
     }));
     const combinedArchives = [...newArchives, ...archives];
     const dataString = JSON.stringify(combinedArchives, null, 2);
@@ -335,6 +477,13 @@ ipcMain.handle('load-config', () => {
 ipcMain.handle('save-config', (event, config) => {
   try {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    
+    // Update tray menu language
+    if (config.lang) {
+      currentLang = config.lang;
+      updateTrayMenu();
+    }
+
     // Broadcast language change to all windows
     if (win) win.webContents.send('language-changed', config.lang);
     if (historyWin) historyWin.webContents.send('language-changed', config.lang);
@@ -409,16 +558,32 @@ ipcMain.handle('restore-archive-item', (event, { item, fileIndex }) => {
   try {
     const userDataPath = app.getPath('userData');
     const filePath = path.join(userDataPath, `archive_todos_${fileIndex}.json`);
-    let data = [];
+    
+    // 1. Remove from archive
     if (fs.existsSync(filePath)) {
-      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      let archiveData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      archiveData = archiveData.filter(i => i.id !== item.id);
+      fs.writeFileSync(filePath, JSON.stringify(archiveData, null, 2));
     }
-    // Remove the temporary _fileIndex property if it exists
+    
+    // 2. Add back to main todos.json
+    const mainStorePath = path.join(userDataPath, 'todos.json');
+    let mainTodos = [];
+    if (fs.existsSync(mainStorePath)) {
+      mainTodos = JSON.parse(fs.readFileSync(mainStorePath, 'utf8'));
+    }
+    
     const itemToRestore = { ...item };
     delete itemToRestore._fileIndex;
+    delete itemToRestore.archiveAt;
     
-    data.unshift(itemToRestore);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    mainTodos.unshift(itemToRestore);
+    fs.writeFileSync(mainStorePath, JSON.stringify(mainTodos, null, 2));
+    
+    // Broadcast updates
+    if (win) win.webContents.send('todos-updated');
+    if (historyWin) historyWin.webContents.send('todos-updated');
+    
     return true;
   } catch (error) {
     console.error('Failed to restore archive item:', error);

@@ -1,6 +1,6 @@
 {
   "name": "menubar-todo",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A minimal menubar todo app",
   "main": "main.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist-run": "npm run dist && start \"\" \"dist\\win-unpacked\\MenuBar Todo.exe\"",
+    "pack-models": "tar -czf models/en.tar.gz -C models/en . && tar -czf models/zh.tar.gz -C models/zh .",
     "test": "playwright test"
   },
   "build": {
@@ -28,24 +29,28 @@
       "style.css",
       "history.css",
       "icon.png",
-      "package.json"
+      "package.json",
+      "lib/"
     ],
     "win": {
       "target": [
         "nsis",
         "appx"
       ],
-      "icon": "icon.png"
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "MenuBar Todo"
     },
     "appx": {
       "identityName": "mesmerli.MenuBarTodo",
       "publisher": "CN=B50F36C9-7E5E-4652-A715-0185D35ADE64",
       "publisherDisplayName": "mesmerli",
       "displayName": "MenuBar Todo",
+      "backgroundColor": "#1a1a1e",
+      "showNameOnTiles": true,
       "languages": [
         "zh-TW",
         "en-US"
@@ -54,7 +59,10 @@
     },
     "directories": {
       "output": "dist"
-    }
+    },
+    "extraResources": [
+      "models/*.tar.gz"
+    ]
   },
   "keywords": [],
   "author": "mesmerli",
@@ -63,5 +71,8 @@
     "@playwright/test": "^1.59.1",
     "electron": "^41.3.0",
     "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "vosk-browser": "^0.0.8"
   }
 }

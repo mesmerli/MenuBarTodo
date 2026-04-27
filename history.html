@@ -15,17 +15,19 @@
         <button class="tab" data-filter="month" data-i18n="tab-month">月</button>
       </div>
       <div class="actions" style="display: flex; gap: 8px; align-items: center; padding-bottom: 6px;">
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--text-secondary); margin-right: 8px;">
-          <input type="checkbox" id="auto-launch-checkbox" style="cursor: pointer;">
+        <label class="switch-container" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-secondary); margin-right: 8px;">
           <span data-i18n="setting-auto-launch">開機時自動啟動</span>
+          <div class="switch">
+            <input type="checkbox" id="auto-launch-checkbox">
+            <span class="slider round"></span>
+          </div>
         </label>
         <button id="lang-btn" class="icon-action-btn" title="切換語言 / Language" style="font-size: 14px; padding: 4px 10px;">🌐</button>
         <button id="archive-btn" class="icon-action-btn" title="開啟封存庫 / Open Archive" style="font-size: 14px; padding: 4px 10px; display: flex; align-items: center;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V11"></path>
-            <path d="M1 8l11-5 11 5"></path>
-            <path d="M1 8v3h22V8"></path>
-            <path d="M10 15h4"></path>
+            <rect width="20" height="12" x="2" y="10" rx="2"></rect>
+            <path d="M4 10V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5"></path>
+            <path d="M10 14h4"></path>
           </svg>
         </button>
         <button id="undo-btn" class="icon-action-btn" disabled title="復原刪除 / Undo Delete" style="padding: 4px 10px; display: flex; align-items: center;">
@@ -45,7 +47,7 @@
             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
           </svg>
           <input type="text" id="todo-input" data-i18n="input-placeholder" placeholder="Type a task and press Enter..." autocomplete="off" style="width: 100%; padding: 10px 40px 10px 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--item-bg); color: var(--text-primary); font-size: 14px; outline: none; border-color: transparent; transition: border-color 0.2s;">
-          <button id="voice-btn" class="voice-btn" title="Voice Input" style="right: 8px;">🎤</button>
+          <button id="voice-btn" class="voice-btn" title="Voice Input">🎤</button>
         </div>
       </div>
       <div class="search-box" style="flex: 0 0 250px; position: relative; display: flex; align-items: center;">
@@ -63,10 +65,10 @@
           <tr>
             <th width="8%" data-sort="status" style="cursor: pointer;" data-i18n="col-status">狀態</th>
             <th width="40%" data-sort="text" style="cursor: pointer;" data-i18n="col-text">任務內容</th>
-            <th width="12%" data-sort="dimension" style="cursor: pointer;" data-i18n="col-dim">維度</th>
-            <th width="16%" data-sort="createdAt" style="cursor: pointer;" data-i18n="col-created">建立時間</th>
-            <th width="16%" data-sort="completedAt" style="cursor: pointer;" data-i18n="col-completed">完成時間</th>
-            <th width="8%"></th>
+            <th width="80" data-sort="dimension" style="cursor: pointer; width: 80px;" data-i18n="col-dim">維度</th>
+            <th width="150" data-sort="createdAt" style="cursor: pointer; width: 150px;" data-i18n="col-created">建立時間</th>
+            <th width="150" data-sort="dueDate" style="cursor: pointer; width: 150px;" data-i18n="col-due">到期時間</th>
+            <th width="60" style="width: 60px;"></th>
           </tr>
         </thead>
         <tbody id="history-tbody">
@@ -76,6 +78,7 @@
     </div>
   </div>
   <script src="locales.js"></script>
+  <script src="lib/vosk.js"></script>
   <script src="history.js"></script>
 </body>
 </html>
