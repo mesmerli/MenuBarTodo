@@ -80,6 +80,12 @@
 - [x] **Minimalism Passes**:
   - Stripped legacy column tags ensuring aesthetic breathing room.
 
+### v1.4.1 — Unique Builds & UI Polish
+- [x] **Continuous 6-Digit Tracker**:
+  - Installed Node pipeline incrementing system tags perfectly.
+- [x] **Checklist Aesthetics**:
+  - Redesigned historical reports preventing false edits.
+
 ## Proposed Future Changes
 
 ### Enhanced Search

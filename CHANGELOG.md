@@ -4,6 +4,12 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.4.1] - 2026-04-28
+- **Added**: Persistent 6-digit auto-incrementing build tracker (`bump-build.js`).
+- **Improved**: Replaced explicit textual status labels in Archive lists with modern visual toggles.
+- **Improved**: Hard-synced secondary container widths flawlessly to baseline templates.
+- **Fixed**: Locked unwanted cursor modifications for past workflow states (`not-allowed`).
+
 ### [1.4.0] - 2026-04-28
 - **Added**: Date picker overhaul allowing fluid `ArrowUp`/`ArrowDown` key adjustments and wheel scrolling by 30-minute intervals.
 - **Added**: Pure blur-to-save input logic replacing clunky confirmation tools.

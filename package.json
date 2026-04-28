@@ -1,13 +1,13 @@
 {
   "name": "menubar-todo",
-  "version": "1.4.0",
+  "version": "1.4.1-build.000004",
   "description": "A minimal menubar todo app",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist-run": "npm run dist && start \"\" \"dist\\win-unpacked\\MenuBar Todo.exe\"",
+    "pack": "node bump-build.js && electron-builder --dir",
+    "dist": "node bump-build.js && electron-builder",
+    "dist-run": "node bump-build.js && electron-builder && start \"\" \"dist\\win-unpacked\\MenuBar Todo.exe\"",
     "pack-models": "tar -czf models/en.tar.gz -C models/en . && tar -czf models/zh.tar.gz -C models/zh .",
     "test": "playwright test"
   },

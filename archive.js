@@ -173,10 +173,13 @@ function renderTable() {
     const tr = document.createElement('tr');
     
     const statusCell = document.createElement('td');
-    const statusBadge = document.createElement('span');
-    statusBadge.className = `status-badge ${item.completed ? 'completed' : 'active'}`;
-    statusBadge.textContent = window.i18n.t(item.completed ? 'status-completed' : 'status-active');
-    statusCell.appendChild(statusBadge);
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'todo-checkbox';
+    checkbox.checked = !!item.completed;
+    checkbox.disabled = true;
+    checkbox.style.cursor = 'not-allowed';
+    statusCell.appendChild(checkbox);
     
     const textCell = document.createElement('td');
     textCell.className = 'text-cell';
