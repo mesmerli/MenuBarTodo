@@ -121,6 +121,60 @@ test.describe('MenuBar Todo E2E Tests', () => {
     await expect(window.locator('#todo-list')).toContainText('Undo Test');
   });
 
+  test('should restore todo completion status on undo click', async () => {
+    const input = window.locator('#todo-input');
+    const undoBtn = window.locator('#main-undo-btn');
+
+    const taskText = 'Toggle Undo Test ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const checkbox = todoItem.locator('.todo-checkbox');
+
+    // Toggle to completed
+    await checkbox.check();
+    await expect(checkbox).toBeChecked();
+
+    // Click undo
+    await undoBtn.click();
+
+    // Verify back to uncompleted
+    await expect(checkbox).not.toBeChecked();
+  });
+
+  test('should restore todo due date on undo click', async () => {
+    const input = window.locator('#todo-input');
+    const undoBtn = window.locator('#main-undo-btn');
+
+    const taskText = 'DueDate Undo Test ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const dueSpan = todoItem.locator('.due-date');
+
+    // Click to edit
+    await dueSpan.click();
+    const editInput = dueSpan.locator('input');
+    await expect(editInput).toBeVisible();
+
+    // Adjust time using ArrowUp (increases by 30 mins)
+    const originalVal = await editInput.inputValue();
+    await editInput.press('ArrowUp');
+    await editInput.press('Enter'); // SaveDue
+
+    // Wait for UI redraw
+    const originalMatch = originalVal.substring(5); // Skip "YYYY/"
+    await expect(dueSpan).not.toContainText(originalMatch);
+
+    // Click Undo
+    await undoBtn.click();
+
+    // Should restore original time value
+    await expect(dueSpan).toContainText(originalMatch);
+  });
+
   // ──────────────────────────────────────────────
   // 3. Tab / Dimension Switching
   // ──────────────────────────────────────────────

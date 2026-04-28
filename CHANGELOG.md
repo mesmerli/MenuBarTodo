@@ -4,6 +4,9 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.4.2] - 2026-04-28
+- **Added**: Expanded dual Undo support covering state toggles and custom deadline adjustments.
+
 ### [1.4.1] - 2026-04-28
 - **Added**: Persistent 6-digit auto-incrementing build tracker (`bump-build.js`).
 - **Improved**: Replaced explicit textual status labels in Archive lists with modern visual toggles.

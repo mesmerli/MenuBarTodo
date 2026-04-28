@@ -86,6 +86,10 @@
 - [x] **Checklist Aesthetics**:
   - Redesigned historical reports preventing false edits.
 
+### v1.4.2 — Super Undo Operations
+- [x] **Extended Action Buffers**:
+  - Enhanced undo logic on completion triggers and due date modifications.
+
 ## Proposed Future Changes
 
 ### Enhanced Search

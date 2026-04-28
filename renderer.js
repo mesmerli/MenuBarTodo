@@ -238,15 +238,43 @@ if (settingsBtn) {
 if (mainUndoBtn) {
   mainUndoBtn.addEventListener('click', async () => {
     if (deletedHistory.length > 0) {
-      const lastDeleted = deletedHistory.pop();
-      todos = [...todos, ...lastDeleted];
+      const lastAction = deletedHistory.pop();
+      
+      if (Array.isArray(lastAction)) {
+        // Backward compatibility for pure archive arrays
+        todos = [...todos, ...lastAction];
+        if (window.api.removeFromArchive) {
+          window.api.removeFromArchive(lastAction);
+        }
+      } else if (lastAction.type === 'ARCHIVE') {
+        todos = [...todos, ...lastAction.items];
+        if (window.api.removeFromArchive) {
+          window.api.removeFromArchive(lastAction.items);
+        }
+      } else if (lastAction.type === 'TOGGLE') {
+        const idx = todos.findIndex(t => t.id === lastAction.id);
+        if (idx !== -1) {
+          todos[idx].completed = lastAction.wasCompleted;
+          if (todos[idx].completed) {
+            todos[idx].completedAt = Date.now();
+          } else {
+            delete todos[idx].completedAt;
+          }
+        }
+      } else if (lastAction.type === 'EDIT_DUEDATE') {
+        const idx = todos.findIndex(t => t.id === lastAction.id);
+        if (idx !== -1) {
+          if (lastAction.wasDueDate) {
+            todos[idx].dueDate = lastAction.wasDueDate;
+          } else {
+            delete todos[idx].dueDate;
+          }
+        }
+      }
+      
       mainUndoBtn.disabled = deletedHistory.length === 0;
       renderTodos();
       await window.api.saveTodos(todos);
-      
-      if (window.api.removeFromArchive) {
-        window.api.removeFromArchive(lastDeleted);
-      }
     }
   });
 }
@@ -437,15 +465,26 @@ function renderTodos() {
         else adjustDate(-30);
       });
 
+      let isSavingDue = false;
       const saveDue = async () => {
+        if (isSavingDue) return;
+        isSavingDue = true;
         if (input.value) {
           const normalizedValue = input.value.trim().replace(/\//g, '-');
           const newDate = new Date(normalizedValue);
           if (!isNaN(newDate.getTime())) {
             const index = todos.findIndex(t => t.id === todo.id);
             if (index !== -1) {
-              todos[index].dueDate = newDate.getTime();
-              await window.api.saveTodos(todos);
+              const wasDueDate = todos[index].dueDate;
+              if (wasDueDate !== newDate.getTime()) {
+                todos[index].dueDate = newDate.getTime();
+                
+                deletedHistory.push({ type: 'EDIT_DUEDATE', id: todo.id, wasDueDate: wasDueDate });
+                if (deletedHistory.length > 10) deletedHistory.shift();
+                if (mainUndoBtn) mainUndoBtn.disabled = false;
+
+                await window.api.saveTodos(todos);
+              }
             }
           }
         }
@@ -479,6 +518,10 @@ function renderTodos() {
     li.appendChild(deleteBtn);
     list.appendChild(li);
   });
+  
+  if (mainUndoBtn) {
+    mainUndoBtn.disabled = deletedHistory.length === 0;
+  }
 }
 
 async function handleNewTodo(text) {
@@ -639,12 +682,18 @@ if (voiceBtn) {
 async function toggleTodo(id) {
   const index = todos.findIndex(t => t.id === id);
   if (index !== -1) {
+    const wasCompleted = !!todos[index].completed;
     todos[index].completed = !todos[index].completed;
     if (todos[index].completed) {
       todos[index].completedAt = Date.now();
     } else {
       delete todos[index].completedAt;
     }
+    
+    deletedHistory.push({ type: 'TOGGLE', id: id, wasCompleted: wasCompleted });
+    if (deletedHistory.length > 10) deletedHistory.shift();
+    if (mainUndoBtn) mainUndoBtn.disabled = false;
+
     renderTodos();
     await window.api.saveTodos(todos);
   }
@@ -657,7 +706,7 @@ async function deleteTodo(id) {
     
     // Archive and add to history
     window.api.archiveTodos([deleted]);
-    deletedHistory.push([deleted]);
+    deletedHistory.push({ type: 'ARCHIVE', items: [deleted] });
     if (deletedHistory.length > 10) deletedHistory.shift();
     if (mainUndoBtn) mainUndoBtn.disabled = false;
     

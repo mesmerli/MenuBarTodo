@@ -269,7 +269,7 @@ async function init() {
     const completedTodos = todos.filter(t => t.completed);
     if (completedTodos.length > 0) {
       window.api.archiveTodos(completedTodos);
-      archiveHistory.push(completedTodos);
+      archiveHistory.push({ type: 'ARCHIVE', items: completedTodos });
       if (archiveHistory.length > 100) archiveHistory.shift();
       undoBtn.disabled = false;
       
@@ -283,12 +283,35 @@ async function init() {
 
   undoBtn.addEventListener('click', async () => {
     if (archiveHistory.length > 0) {
-      const lastArchived = archiveHistory.pop();
+      const lastAction = archiveHistory.pop();
       
-      // Remove these restored tasks from rotation archives
-      window.api.removeFromArchive(lastArchived);
+      if (Array.isArray(lastAction)) {
+        window.api.removeFromArchive(lastAction);
+        todos = [...todos, ...lastAction];
+      } else if (lastAction.type === 'ARCHIVE') {
+        window.api.removeFromArchive(lastAction.items);
+        todos = [...todos, ...lastAction.items];
+      } else if (lastAction.type === 'TOGGLE') {
+        const idx = todos.findIndex(t => t.id === lastAction.id);
+        if (idx !== -1) {
+          todos[idx].completed = lastAction.wasCompleted;
+          if (todos[idx].completed) {
+            todos[idx].completedAt = Date.now();
+          } else {
+            delete todos[idx].completedAt;
+          }
+        }
+      } else if (lastAction.type === 'EDIT_DUEDATE') {
+        const idx = todos.findIndex(t => t.id === lastAction.id);
+        if (idx !== -1) {
+          if (lastAction.wasDueDate) {
+            todos[idx].dueDate = lastAction.wasDueDate;
+          } else {
+            delete todos[idx].dueDate;
+          }
+        }
+      }
       
-      todos = [...todos, ...lastArchived];
       undoBtn.disabled = archiveHistory.length === 0;
       isSaving = true;
       await window.api.saveTodos(todos);
@@ -415,12 +438,18 @@ function renderTable() {
     checkbox.addEventListener('change', async () => {
       const idx = todos.findIndex(t => t.id === todo.id);
       if (idx !== -1) {
+        const wasCompleted = !checkbox.checked;
         todos[idx].completed = checkbox.checked;
         if (checkbox.checked) {
           todos[idx].completedAt = Date.now();
         } else {
           delete todos[idx].completedAt;
         }
+        
+        archiveHistory.push({ type: 'TOGGLE', id: todo.id, wasCompleted: wasCompleted });
+        if (archiveHistory.length > 100) archiveHistory.shift();
+        undoBtn.disabled = false;
+
         isSaving = true;
         await window.api.saveTodos(todos);
         isSaving = false;
@@ -442,7 +471,7 @@ function renderTable() {
     `;
     archiveBtn.addEventListener('click', async () => {
       window.api.archiveTodos([todo]);
-      archiveHistory.push([todo]);
+      archiveHistory.push({ type: 'ARCHIVE', items: [todo] });
       if (archiveHistory.length > 100) archiveHistory.shift();
       undoBtn.disabled = false;
       
@@ -518,17 +547,28 @@ function renderTable() {
         else adjustDate(-30);
       });
       
+      let isSavingDue = false;
       const saveDue = async () => {
+        if (isSavingDue) return;
+        isSavingDue = true;
         if (input.value) {
           const normalizedValue = input.value.trim().replace(/\//g, '-');
           const newDate = new Date(normalizedValue);
           if (!isNaN(newDate.getTime())) {
             const idx = todos.findIndex(t => t.id === todo.id);
             if (idx !== -1) {
-              todos[idx].dueDate = newDate.getTime();
-              isSaving = true;
-              await window.api.saveTodos(todos);
-              isSaving = false;
+              const wasDueDate = todos[idx].dueDate;
+              if (wasDueDate !== newDate.getTime()) {
+                todos[idx].dueDate = newDate.getTime();
+                
+                archiveHistory.push({ type: 'EDIT_DUEDATE', id: todo.id, wasDueDate: wasDueDate });
+                if (archiveHistory.length > 100) archiveHistory.shift();
+                undoBtn.disabled = false;
+
+                isSaving = true;
+                await window.api.saveTodos(todos);
+                isSaving = false;
+              }
             }
           }
         }
