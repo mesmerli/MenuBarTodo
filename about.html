@@ -89,8 +89,13 @@
       window.i18n.lang = config.lang || 'zh-TW';
       window.i18n.applyTranslations();
       
-      // Get version from app (via main if needed, but for now we can hardcode or get via API)
-      // For simplicity, let's assume we might want to update this dynamically
+      // Get version from app dynamically
+      try {
+        const version = await window.api.getVersion();
+        document.getElementById('version-num').textContent = version;
+      } catch (e) {
+        console.error('Failed to fetch version:', e);
+      }
     }
     init();
     

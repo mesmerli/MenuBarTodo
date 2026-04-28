@@ -29,13 +29,17 @@ const storePath = path.join(app.getPath('userData'), 'todos.json');
 const configPath = path.join(app.getPath('userData'), 'config.json');
 const debugLogPath = path.join(app.getPath('userData'), 'app-debug.log');
 
+const isDebugMode = !app.isPackaged || process.argv.includes('--debug');
+
 // Log to file function
 function logToFile(message) {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${message}\n`;
   try {
-    fs.appendFileSync(debugLogPath, logMessage);
-    console.log(message);
+    if (isDebugMode) {
+      fs.appendFileSync(debugLogPath, logMessage);
+      console.log(message);
+    }
   } catch (err) {
     console.error('Failed to write to log file:', err);
   }
@@ -94,6 +98,10 @@ ipcMain.on('pomo-set-duration', (event, minutes) => {
 
 ipcMain.on('pomo-get-state', (event) => {
   event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+});
+
+ipcMain.handle('get-version', () => {
+  return app.getVersion();
 });
 
 let currentLang = 'zh-TW';
@@ -240,12 +248,22 @@ function updateTrayMenu() {
   };
   const t = translations[currentLang] || translations['zh-TW'];
 
-  const contextMenu = Menu.buildFromTemplate([
-    { label: t.show, click: () => showWindow() },
-    { label: t.debug, click: () => {
-      const focusedWin = BrowserWindow.getFocusedWindow() || win;
-      if (focusedWin) focusedWin.webContents.openDevTools({ mode: 'detach' });
-    }},
+  const menuTemplate = [
+    { label: t.show, click: () => showWindow() }
+  ];
+
+  // Only add DevTools option in debug mode
+  if (isDebugMode) {
+    menuTemplate.push({ 
+      label: t.debug, 
+      click: () => {
+        const focusedWin = BrowserWindow.getFocusedWindow() || win;
+        if (focusedWin) focusedWin.webContents.openDevTools({ mode: 'detach' });
+      }
+    });
+  }
+
+  menuTemplate.push(
     { type: 'separator' },
     { label: t.about, click: () => {
       if (aboutWin) {
@@ -272,8 +290,9 @@ function updateTrayMenu() {
     }},
     { type: 'separator' },
     { label: t.exit, click: () => app.quit() }
-  ]);
-  
+  );
+
+  const contextMenu = Menu.buildFromTemplate(menuTemplate);
   tray.setContextMenu(contextMenu);
 }
 
