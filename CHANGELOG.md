@@ -4,6 +4,15 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.4.0] - 2026-04-28
+- **Added**: Date picker overhaul allowing fluid `ArrowUp`/`ArrowDown` key adjustments and wheel scrolling by 30-minute intervals.
+- **Added**: Pure blur-to-save input logic replacing clunky confirmation tools.
+- **Added**: Smart time ceilings generating rounded expiry marks automatically (+4h for Day, +7d for Week, +30d for Month).
+- **Added**: Robust multi-action undo pipeline capturing deletions alongside inventory returns.
+- **Improved**: Trimmed redundant task creation columns across general lists.
+- **Improved**: Clean empty date placeholders displaying `-` uniformly.
+- **Fixed**: Wiped stale logical window pointers causing sudden execution drops.
+
 ### [1.3.0] - 2026-04-28
 - **Added**: Pomodoro Timer enhancements: support setting `MM:SS`, ArrowUp/Down adjustments, and mouse wheel scrolling.
 - **Added**: Sound effects: Countdown tick-tock audio (10s to 1s) and final completion Ding bell.

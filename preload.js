@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('api', {
   loadArchives: () => ipcRenderer.invoke('load-archives'),
   deleteArchiveItem: (id, fileIndex) => ipcRenderer.invoke('delete-archive-item', { id, fileIndex }),
   restoreArchiveItem: (item, fileIndex) => ipcRenderer.invoke('restore-archive-item', { item, fileIndex }),
+  undoDeleteArchiveItem: (data) => ipcRenderer.invoke('undo-delete-archive-item', data),
+  undoRestoreArchiveItem: (data) => ipcRenderer.invoke('undo-restore-archive-item', data),
   onArchivesUpdated: (callback) => ipcRenderer.on('archives-updated', () => callback()),
   openUrl: (url) => ipcRenderer.send('open-url', url),
   removeFromArchive: (todos) => ipcRenderer.send('remove-from-archive', todos),

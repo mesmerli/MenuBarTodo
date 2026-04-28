@@ -6,7 +6,7 @@ const sortHeaders = document.querySelectorAll('th[data-sort]');
 
 // Internal state for filtering, sorting, and managing data
 let archives = [];
-let deleteHistory = [];
+let archiveUndoHistory = [];
 let searchQuery = '';
 let currentFilter = 'all';
 let sortColumn = 'archiveAt';
@@ -76,11 +76,18 @@ async function init() {
 
   if (undoBtn) {
     undoBtn.addEventListener('click', async () => {
-      if (deleteHistory.length > 0) {
-        const lastDeleted = deleteHistory.pop();
-        const success = await window.api.restoreArchiveItem(lastDeleted.item, lastDeleted.fileIndex);
+      if (archiveUndoHistory.length > 0) {
+        const lastAction = archiveUndoHistory.pop();
+        let success = false;
+        
+        if (lastAction.type === 'DELETE') {
+          success = await window.api.undoDeleteArchiveItem({ item: lastAction.item, fileIndex: lastAction.fileIndex });
+        } else if (lastAction.type === 'RESTORE') {
+          success = await window.api.undoRestoreArchiveItem({ item: lastAction.item, fileIndex: lastAction.fileIndex });
+        }
+        
         if (success) {
-          undoBtn.disabled = deleteHistory.length === 0;
+          undoBtn.disabled = archiveUndoHistory.length === 0;
           await loadData();
         }
       }
@@ -178,16 +185,12 @@ function renderTable() {
     const dimCell = document.createElement('td');
     dimCell.textContent = getDimensionLabel(item.dimension || 'day');
     
-    const createdCell = document.createElement('td');
-    createdCell.textContent = formatDate(item.createdAt);
-    
     const dueCell = document.createElement('td');
     dueCell.textContent = item.dueDate ? formatDate(item.dueDate) : '-';
     
     tr.appendChild(statusCell);
     tr.appendChild(textCell);
     tr.appendChild(dimCell);
-    tr.appendChild(createdCell);
     tr.appendChild(dueCell);
     
     const actionCell = document.createElement('td');
@@ -198,13 +201,18 @@ function renderTable() {
     restoreBtn.title = 'Restore Task';
     restoreBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="23 4 23 10 17 10"></polyline>
-        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        <polyline points="21 8 21 21 3 21 3 8"></polyline>
+        <rect x="1" y="3" width="22" height="5"></rect>
+        <polyline points="10 14 12 12 14 14"></polyline>
+        <line x1="12" y1="18" x2="12" y2="12"></line>
       </svg>
     `;
     restoreBtn.addEventListener('click', async () => {
       const success = await window.api.restoreArchiveItem(item, item._fileIndex);
       if (success) {
+        archiveUndoHistory.push({ type: 'RESTORE', item: { ...item }, fileIndex: item._fileIndex });
+        if (archiveUndoHistory.length > 100) archiveUndoHistory.shift();
+        undoBtn.disabled = false;
         await loadData();
       }
     });
@@ -223,8 +231,8 @@ function renderTable() {
     deleteBtn.addEventListener('click', async () => {
       const success = await window.api.deleteArchiveItem(item.id, item._fileIndex);
       if (success) {
-        deleteHistory.push({ item: { ...item }, fileIndex: item._fileIndex });
-        if (deleteHistory.length > 100) deleteHistory.shift();
+        archiveUndoHistory.push({ type: 'DELETE', item: { ...item }, fileIndex: item._fileIndex });
+        if (archiveUndoHistory.length > 100) archiveUndoHistory.shift();
         undoBtn.disabled = false;
         await loadData();
       }

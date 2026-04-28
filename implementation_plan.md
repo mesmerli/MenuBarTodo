@@ -68,6 +68,18 @@
   - Ensured uninterrupted countdown execution while transitioning widget view frames.
   - Enabled standalone transparent overlay support ensuring layout fidelity.
 
+### v1.4.0 — Smart Deadlines & Zero-Click Date Edits
+- [x] **Fluid Date Adjustment Architecture**:
+  - Implemented non-modal input fields triggering on-click.
+  - Enabled ArrowUp/Down keyboard shortcuts and mouse wheel increments to step through 30-minute deadlines.
+  - Enforced zero-button blur-to-save paradigms.
+- [x] **Automatic Ceil Deadlines**:
+  - Created intelligent logic pushing defaults (+4h Daily, +7d Weekly, +30d Monthly) directly forward to the closest half-hour milestones.
+- [x] **Dual Archive Undo-Chains**:
+  - Connected core main-list restoration routines safely under local stack caches enabling bidirectional reversals.
+- [x] **Minimalism Passes**:
+  - Stripped legacy column tags ensuring aesthetic breathing room.
+
 ## Proposed Future Changes
 
 ### Enhanced Search

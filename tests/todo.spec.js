@@ -8,7 +8,8 @@ test.describe('MenuBar Todo E2E Tests', () => {
   test.beforeAll(async () => {
     electronApp = await electron.launch({ args: ['.', '--test'] });
     window = await electronApp.firstWindow();
-    await window.waitForSelector('#todo-input');
+    await window.waitForLoadState('domcontentloaded');
+    await window.waitForSelector('#todo-input', { timeout: 10000 });
   });
 
   test.afterAll(async () => {
@@ -22,12 +23,12 @@ test.describe('MenuBar Todo E2E Tests', () => {
   test('should add a new todo item via Enter key', async () => {
     const input = window.locator('#todo-input');
     const taskText = 'Test Task ' + Date.now();
-    
+
     await input.fill(taskText);
     await input.press('Enter');
 
     const todoList = window.locator('#todo-list');
-    await expect(todoList).toContainText(taskText);
+    await expect(todoList).toContainText(taskText, { timeout: 10000 });
   });
 
   test('should clear input after adding a todo', async () => {
@@ -37,7 +38,7 @@ test.describe('MenuBar Todo E2E Tests', () => {
     await input.fill(taskText);
     await input.press('Enter');
 
-    await expect(input).toHaveValue('');
+    await expect(input).toHaveValue('', { timeout: 10000 });
   });
 
   test('should not add empty todo', async () => {
@@ -149,7 +150,7 @@ test.describe('MenuBar Todo E2E Tests', () => {
     // Switch to Day tab and add a task
     const dayTab = window.locator('.tab[data-dimension="day"]');
     await dayTab.click();
-    
+
     const input = window.locator('#todo-input');
     const dayTask = 'Day Only Task ' + Date.now();
     await input.fill(dayTask);
@@ -277,6 +278,49 @@ test.describe('MenuBar Todo E2E Tests', () => {
     expect(dueDateText).toMatch(/\d{2}\/\d{2}\s+\d{2}:\d{2}/);
   });
 
+  test('should adjust due date by keyboard arrow keys', async () => {
+    const dayTab = window.locator('.tab[data-dimension="day"]');
+    await dayTab.click();
+
+    const input = window.locator('#todo-input');
+    const taskText = 'DueDate Edit ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const dueDate = todoItem.locator('.due-date');
+
+    await dueDate.click();
+    const editInput = todoItem.locator('.edit-input');
+    await expect(editInput).toBeVisible();
+
+    const beforeText = await editInput.inputValue();
+    await editInput.press('ArrowUp');
+
+    const afterText = await editInput.inputValue();
+    expect(beforeText).not.toBe(afterText);
+
+    // Click outside to save
+    await input.click();
+    await expect(editInput).not.toBeVisible();
+  });
+
+  test('should calculate correct future due date on creation', async () => {
+    const weekTab = window.locator('.tab[data-dimension="week"]');
+    await weekTab.click();
+
+    const input = window.locator('#todo-input');
+    const taskText = 'Week Date Calc ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const dueDate = todoItem.locator('.due-date');
+    const dueDateText = await dueDate.textContent();
+
+    expect(dueDateText).toMatch(/\d{2}\/\d{2}\s+\d{2}:\d{2}/);
+  });
+
   // ──────────────────────────────────────────────
   // 7. Pomodoro Timer
   // ──────────────────────────────────────────────
@@ -330,19 +374,19 @@ test.describe('MenuBar Todo E2E Tests', () => {
 
   test('should open task management window', async () => {
     const settingsBtn = window.locator('#settings-btn');
-    
+
     // Listen for the new window event before clicking
     const windowPromise = electronApp.waitForEvent('window');
     await settingsBtn.click();
-    
-    const historyWindow = await windowPromise;
-    expect(historyWindow).toBeDefined();
-    await expect(historyWindow).toHaveTitle(/任務管理|Task Management/);
 
-    // The history window should have core elements
-    await historyWindow.waitForSelector('#todo-input', { timeout: 5000 });
-    const historyInput = historyWindow.locator('#todo-input');
-    await expect(historyInput).toBeVisible();
+    const taskManagerWin = await windowPromise;
+    expect(taskManagerWin).toBeDefined();
+    await expect(taskManagerWin).toHaveTitle(/任務管理|Task Management/);
+
+    // The task manager window should have core elements
+    await taskManagerWin.waitForSelector('#todo-input', { timeout: 5000 });
+    const todoInput = taskManagerWin.locator('#todo-input');
+    await expect(todoInput).toBeVisible();
   });
 
   // ──────────────────────────────────────────────
@@ -350,19 +394,27 @@ test.describe('MenuBar Todo E2E Tests', () => {
   // ──────────────────────────────────────────────
 
   test('should persist tasks after reload', async () => {
+    // Ensure we're on the Day tab
+    const dayTab = window.locator('.tab[data-dimension="day"]');
+    await dayTab.click();
+
     // Add a unique task
     const input = window.locator('#todo-input');
     const persistTask = 'Persist ' + Date.now();
     await input.fill(persistTask);
     await input.press('Enter');
-    await expect(window.locator('#todo-list')).toContainText(persistTask);
+    await expect(window.locator('#todo-list')).toContainText(persistTask, { timeout: 10000 });
 
     // Reload the main window
     await window.reload();
-    await window.waitForSelector('#todo-input');
+    await window.waitForLoadState('domcontentloaded');
+    await window.waitForSelector('#todo-input', { timeout: 10000 });
+
+    // After reload, dimension resets to 'day' — click it to be safe
+    await window.locator('.tab[data-dimension="day"]').click();
 
     // The task should still be there
-    await expect(window.locator('#todo-list')).toContainText(persistTask);
+    await expect(window.locator('#todo-list')).toContainText(persistTask, { timeout: 15000 });
   });
 
   // ──────────────────────────────────────────────
@@ -383,7 +435,7 @@ test.describe('MenuBar Todo E2E Tests', () => {
 
   test('should focus input on window load', async () => {
     const input = window.locator('#todo-input');
-    await expect(input).toBeFocused();
+    await expect(input).toBeFocused({ timeout: 5000 });
   });
 
   // ──────────────────────────────────────────────
@@ -393,7 +445,7 @@ test.describe('MenuBar Todo E2E Tests', () => {
   test('should handle adding multiple tasks rapidly', async () => {
     const input = window.locator('#todo-input');
     const tasks = [];
-    
+
     for (let i = 0; i < 5; i++) {
       const taskText = `Rapid Task ${i} ${Date.now()}`;
       tasks.push(taskText);

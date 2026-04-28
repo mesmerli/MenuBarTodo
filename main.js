@@ -58,7 +58,7 @@ if (!gotTheLock) {
   let pomoInterval = null;
 
   function broadcastPomoState() {
-    if (win) {
+    if (win && !win.isDestroyed()) {
       win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration, pomoConfiguredSeconds });
     }
   }
@@ -559,10 +559,12 @@ ipcMain.handle('save-todos', (event, todos) => {
   try {
     fs.writeFileSync(storePath, JSON.stringify(todos, null, 2));
     
-    if (taskManagerWin) {
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) {
       taskManagerWin.webContents.send('todos-updated');
     }
-    win.webContents.send('todos-updated');
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('todos-updated');
+    }
     
     return true;
   } catch (error) {
@@ -599,10 +601,10 @@ ipcMain.handle('save-config', (event, config) => {
     }
 
     // Broadcast language change to all windows
-    if (win) win.webContents.send('language-changed', config.lang);
-    if (taskManagerWin) taskManagerWin.webContents.send('language-changed', config.lang);
-    if (archiveWin) archiveWin.webContents.send('language-changed', config.lang);
-    if (aboutWin) aboutWin.webContents.send('language-changed', config.lang);
+    if (win && !win.isDestroyed()) win.webContents.send('language-changed', config.lang);
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('language-changed', config.lang);
+    if (archiveWin && !archiveWin.isDestroyed()) archiveWin.webContents.send('language-changed', config.lang);
+    if (aboutWin && !aboutWin.isDestroyed()) aboutWin.webContents.send('language-changed', config.lang);
     return true;
   } catch (error) {
     console.error('Failed to save config:', error);
@@ -720,12 +722,61 @@ ipcMain.handle('restore-archive-item', (event, { item, fileIndex }) => {
     fs.writeFileSync(mainStorePath, JSON.stringify(mainTodos, null, 2));
     
     // Broadcast updates
-    if (win) win.webContents.send('todos-updated');
-    if (historyWin) historyWin.webContents.send('todos-updated');
+    if (win && !win.isDestroyed()) win.webContents.send('todos-updated');
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('todos-updated');
     
     return true;
   } catch (error) {
     console.error('Failed to restore archive item:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('undo-delete-archive-item', (event, { item, fileIndex }) => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const filePath = path.join(userDataPath, `archive_todos_${fileIndex}.json`);
+    let data = [];
+    if (fs.existsSync(filePath)) {
+      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+    data.unshift(item);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return true;
+  } catch (e) {
+    console.error('Undo delete archive failed:', e);
+    return false;
+  }
+});
+
+ipcMain.handle('undo-restore-archive-item', (event, { item, fileIndex }) => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const mainStorePath = path.join(userDataPath, 'todos.json');
+    
+    // 1. Remove from main todos.json
+    if (fs.existsSync(mainStorePath)) {
+      let mainTodos = JSON.parse(fs.readFileSync(mainStorePath, 'utf8'));
+      mainTodos = mainTodos.filter(t => t.id !== item.id);
+      fs.writeFileSync(mainStorePath, JSON.stringify(mainTodos, null, 2));
+    }
+    
+    // 2. Put back into archive
+    const filePath = path.join(userDataPath, `archive_todos_${fileIndex}.json`);
+    let archiveData = [];
+    if (fs.existsSync(filePath)) {
+      archiveData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    }
+    archiveData.unshift(item);
+    fs.writeFileSync(filePath, JSON.stringify(archiveData, null, 2));
+    
+    // Broadcast
+    if (win && !win.isDestroyed()) win.webContents.send('todos-updated');
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('todos-updated');
+    
+    return true;
+  } catch (e) {
+    console.error('Undo restore archive failed:', e);
     return false;
   }
 });

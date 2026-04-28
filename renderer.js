@@ -383,46 +383,64 @@ function renderTodos() {
     // Due Date Display
     const dueSpan = document.createElement('span');
     dueSpan.className = 'due-date';
-    // Fallback for old tasks without dueDate
-    const defaultOffset = todo.dimension === 'week' ? 7*24*60*60*1000 : (todo.dimension === 'month' ? 30*24*60*60*1000 : 24*60*60*1000);
-    const dueDateVal = todo.dueDate || (todo.createdAt + defaultOffset);
-    const dueDate = new Date(dueDateVal);
-    
-    const isOverdue = !todo.completed && Date.now() > dueDateVal;
-    const month = (dueDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = dueDate.getDate().toString().padStart(2, '0');
-    const hours = dueDate.getHours().toString().padStart(2, '0');
-    const mins = dueDate.getMinutes().toString().padStart(2, '0');
-    dueSpan.textContent = `${month}/${day} ${hours}:${mins}${isOverdue ? ' !' : ''}`;
+    const dueDateVal = todo.dueDate;
+    let dueStr = '-';
+    let isOverdue = false;
+    if (dueDateVal) {
+      const dueDate = new Date(dueDateVal);
+      isOverdue = !todo.completed && Date.now() > dueDateVal;
+      const month = (dueDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = dueDate.getDate().toString().padStart(2, '0');
+      const hours = dueDate.getHours().toString().padStart(2, '0');
+      const mins = dueDate.getMinutes().toString().padStart(2, '0');
+      dueStr = `${month}/${day} ${hours}:${mins}${isOverdue ? ' !' : ''}`;
+    }
+    dueSpan.textContent = dueStr;
     if (isOverdue) dueSpan.classList.add('overdue');
     
-    // Handle inline due date editing on click
     dueSpan.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent triggering parent task click events
+      e.stopPropagation();
       
-      // Format existing due date to YYYY-MM-DDTHH:MM for HTML5 input
-      const current = new Date(dueDateVal);
-      const y = current.getFullYear();
-      const m = (current.getMonth() + 1).toString().padStart(2, '0');
-      const d = current.getDate().toString().padStart(2, '0');
-      const h = current.getHours().toString().padStart(2, '0');
-      const min = current.getMinutes().toString().padStart(2, '0');
-
-      // Create datetime-local input overlay
       const input = document.createElement('input');
-      input.type = 'datetime-local';
+      input.type = 'text';
       input.className = 'edit-input';
-      input.value = `${y}-${m}-${d}T${h}:${min}`;
-      input.style.width = '160px';
+      input.style.width = '140px';
       input.style.color = 'var(--text-primary)';
       input.style.background = 'rgba(0,0,0,0.3)';
       input.style.border = '1px solid var(--accent)';
       input.style.borderRadius = '4px';
-      
-      // Function to save the new due date to disk
+      input.style.textAlign = 'center';
+
+      let currentMs = dueDateVal || Date.now();
+      const updateInputValue = (ms) => {
+        const date = new Date(ms);
+        const yy = date.getFullYear();
+        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dd = date.getDate().toString().padStart(2, '0');
+        const hh = date.getHours().toString().padStart(2, '0');
+        const mn = date.getMinutes().toString().padStart(2, '0');
+        input.value = `${yy}/${mm}/${dd} ${hh}:${mn}`;
+      };
+      updateInputValue(currentMs);
+
+      const adjustDate = (minsOffset) => {
+        const parsed = new Date(input.value.replace(/\//g, '-'));
+        let baseMs = isNaN(parsed.getTime()) ? currentMs : parsed.getTime();
+        baseMs += minsOffset * 60 * 1000;
+        currentMs = baseMs;
+        updateInputValue(currentMs);
+      };
+
+      input.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) adjustDate(30);
+        else adjustDate(-30);
+      });
+
       const saveDue = async () => {
         if (input.value) {
-          const newDate = new Date(input.value);
+          const normalizedValue = input.value.trim().replace(/\//g, '-');
+          const newDate = new Date(normalizedValue);
           if (!isNaN(newDate.getTime())) {
             const index = todos.findIndex(t => t.id === todo.id);
             if (index !== -1) {
@@ -431,24 +449,31 @@ function renderTodos() {
             }
           }
         }
-        renderTodos(); // Refresh visual states
+        renderTodos();
       };
 
-      // Persist edits on losing focus or confirmation
       input.addEventListener('blur', saveDue);
+
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') input.blur();
-        if (e.key === 'Escape') {
-          input.removeEventListener('blur', saveDue);
-          renderTodos();
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          adjustDate(30);
+          return;
         }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          adjustDate(-30);
+          return;
+        }
+        if (e.key === 'Enter') saveDue();
+        if (e.key === 'Escape') renderTodos();
       });
 
       dueSpan.innerHTML = '';
       dueSpan.appendChild(input);
-      if (input.showPicker) input.showPicker();
       input.focus();
     });
+
     li.appendChild(dueSpan);
     
     li.appendChild(deleteBtn);
@@ -459,9 +484,22 @@ function renderTodos() {
 async function handleNewTodo(text) {
   if (!text) return;
   const now = Date.now();
-  let dueOffset = 24 * 60 * 60 * 1000; // default 1 day
-  if (currentDimension === 'week') dueOffset = 7 * 24 * 60 * 60 * 1000;
-  if (currentDimension === 'month') dueOffset = 30 * 24 * 60 * 60 * 1000;
+  let baseTime = now + (24 * 60 * 60 * 1000);
+  if (currentDimension === 'day') baseTime = now + (4 * 60 * 60 * 1000);
+  if (currentDimension === 'week') baseTime = now + (7 * 24 * 60 * 60 * 1000);
+  if (currentDimension === 'month') baseTime = now + (30 * 24 * 60 * 60 * 1000);
+
+  const d = new Date(baseTime);
+  const mins = d.getMinutes();
+  if (mins === 0) {
+    d.setMinutes(0, 0, 0);
+  } else if (mins <= 30) {
+    d.setMinutes(30, 0, 0);
+  } else {
+    d.setHours(d.getHours() + 1);
+    d.setMinutes(0, 0, 0);
+  }
+  const dueTime = d.getTime();
 
   todos.unshift({
     id: now,
@@ -469,7 +507,7 @@ async function handleNewTodo(text) {
     completed: false,
     dimension: currentDimension,
     createdAt: now,
-    dueDate: now + dueOffset
+    dueDate: dueTime
   });
   renderTodos();
   await window.api.saveTodos(todos);

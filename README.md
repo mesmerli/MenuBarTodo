@@ -11,18 +11,20 @@
 
 - 🚀 **Instant Access**: Toggle the window instantly with the global shortcut `Ctrl + Shift + Space`.
 - 🎙️ **Offline Voice Input**: Fully offline speech recognition powered by **Vosk-WASM** — no cloud services, no API keys, complete privacy.
-- 📅 **Multi-dimensional View**: Organize and view tasks across "Day, Week, and Month" dimensions.
+- 📅 **Multi-dimensional View & Smart Expiry**: 
+  - Organize and view tasks across **Day, Week, and Month** dimensions.
+  - **Smart Deadlines**: Automatically ceil future due dates (+4 hours for Day, +7 days for Week, +30 days for Month) to clean half-hour checkpoints.
 - 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
-- 🛠️ **Advanced Management**: Dedicated management window with real-time search, inline editing, and multi-column sorting.
+- 🛠️ **Advanced Management & Fast Inline Edits**:
+  - Dedicated viewer with real-time search, and multi-column sorting.
+  - **Zero-Click Date Picker**: Directly type, hit `ArrowUp`/`ArrowDown`, or scroll your mouse wheel to adjust due dates by 30 minutes. Blur to save instantly.
 - 🍅 **Enhanced Pomodoro**: 
   - Support custom full `MM:SS` precision editing.
   - Scroll or tap arrow shortcuts to quickly iterate time slices.
   - Embedded audio clock triggers (tick-tock sequence and Ding completion).
-- 🪟 **Floating Widget Mode**: Freely isolate floating widgets without stopping ongoing focus flows.
-- 📥 **Smart Archive System**: 
-  - **Auto-Archive**: Completed tasks are automatically moved to the archive after a set duration (1 day for Daily, 7 days for Weekly, 30 days for Monthly tasks).
-  - **Dedicated Viewer**: Manage archived tasks with search, filtering, and permanent deletion.
-  - **Undo Support**: Accidents happen—restore deleted or archived tasks with one click.
+- 📥 **Smart Archive & Multi-History Undo**: 
+  - **Auto-Archive**: Cleans up completed tasks gracefully over dimensions.
+  - **Reversible Workflows**: Undo both hard deletions and main-list restorations intuitively inside the archive suite.
 - 🔗 **Clickable Resources**: URLs in task descriptions are automatically detected and clickable, opening directly in your default browser.
 - 🛡️ **Privacy Focused**: 100% local data storage. No servers, no tracking, complete privacy.
 - 🌐 **Real-time Sync**: Multi-language support (English / 繁體中文) with instant synchronization across all windows.
