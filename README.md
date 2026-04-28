@@ -5,6 +5,8 @@
 
 **MenuBar Todo** is a minimalist, high-performance task management application designed for developers and professionals who value efficiency. It lives in your Windows system tray, allowing you to capture ideas and tasks instantly without breaking your flow.
 
+![MenuBar Todo 主畫面截圖](assets/screenshot.png)
+
 ---
 
 ## ✨ Key Features
