@@ -2,117 +2,116 @@ const { app, BrowserWindow, Tray, globalShortcut, ipcMain, nativeImage, screen, 
 const path = require('path');
 const fs = require('fs');
 
-// Register local-model as a privileged scheme to support Fetch API
+// Register local-model custom scheme to enable Fetch API access to local offline models
 protocol.registerSchemesAsPrivileged([
   { scheme: 'local-model', privileges: { secure: true, standard: true, supportFetchAPI: true, bypassCSP: true, allowServiceWorkers: true } }
 ]);
 
+// Check if running in E2E test mode (--test)
 const isTest = process.argv.includes('--test');
 const gotTheLock = isTest ? true : app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
-  app.quit();
+  app.quit(); // Quit current instance if another one is already running
 } else {
   app.on('second-instance', () => {
     if (win) {
-      showWindow();
+      showWindow(); // Restore and focus main window on duplicate launch attempt
     }
   });
 
   let tray = null;
-let win = null;
-let historyWin = null;
-let archiveWin = null;
-let aboutWin = null;
+  let win = null;
+  let taskManagerWin = null;
+  let archiveWin = null;
+  let aboutWin = null;
 
-const storePath = path.join(app.getPath('userData'), 'todos.json');
-const configPath = path.join(app.getPath('userData'), 'config.json');
-const debugLogPath = path.join(app.getPath('userData'), 'app-debug.log');
+  const storePath = path.join(app.getPath('userData'), 'todos.json');
+  const configPath = path.join(app.getPath('userData'), 'config.json');
+  const debugLogPath = path.join(app.getPath('userData'), 'app-debug.log');
 
-const isDebugMode = !app.isPackaged || process.argv.includes('--debug');
+  const isDebugMode = !app.isPackaged || process.argv.includes('--debug');
 
-// Log to file function
-function logToFile(message) {
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] ${message}\n`;
-  try {
-    if (isDebugMode) {
-      fs.appendFileSync(debugLogPath, logMessage);
-      console.log(message);
-    }
-  } catch (err) {
-    console.error('Failed to write to log file:', err);
-  }
-}
-
-logToFile('--- Application Start ---');
-logToFile(`UserData Path: ${app.getPath('userData')}`);
-logToFile(`Debug Log Path: ${debugLogPath}`);
-
-// Pomodoro State
-let pomoDuration = 30;
-let pomoTime = pomoDuration * 60;
-let pomoRunning = false;
-let pomoInterval = null;
-
-function broadcastPomoState() {
-  if (win) {
-    win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
-  }
-}
-
-function startPomo() {
-  if (pomoInterval) clearInterval(pomoInterval);
-  pomoRunning = true;
-  pomoInterval = setInterval(() => {
-    if (pomoTime > 0) {
-      pomoTime--;
-      if (pomoTime === 10 || pomoTime === 0) {
-        showWindow();
+  function logToFile(message) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message}\n`;
+    try {
+      if (isDebugMode) {
+        fs.appendFileSync(debugLogPath, logMessage);
+        console.log(message);
       }
-    } else {
-      stopPomo();
+    } catch (err) {
+      console.error('Failed to write to log file:', err);
     }
-    broadcastPomoState();
-  }, 1000);
-  broadcastPomoState();
-}
-
-function stopPomo() {
-  pomoRunning = false;
-  if (pomoInterval) clearInterval(pomoInterval);
-  pomoInterval = null;
-  broadcastPomoState();
-}
-
-ipcMain.on('pomo-toggle', () => {
-  if (pomoRunning) stopPomo();
-  else startPomo();
-});
-
-ipcMain.on('pomo-set-duration', (event, minutes) => {
-  pomoDuration = minutes;
-  pomoTime = minutes * 60;
-  broadcastPomoState();
-});
-
-ipcMain.on('pomo-get-state', (event) => {
-  event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
-});
-
-ipcMain.handle('get-version', () => {
-  return app.getVersion();
-});
-
-let currentLang = 'zh-TW';
-try {
-  if (fs.existsSync(configPath)) {
-    const data = fs.readFileSync(configPath, 'utf8');
-    currentLang = JSON.parse(data).lang || 'zh-TW';
   }
-} catch (e) {
-  console.error('Failed to load initial lang:', e);
-}
+
+  logToFile('--- Application Start ---');
+  logToFile(`UserData Path: ${app.getPath('userData')}`);
+  logToFile(`Debug Log Path: ${debugLogPath}`);
+
+  let pomoDuration = 30;
+  let pomoTime = pomoDuration * 60;
+  let pomoRunning = false;
+  let pomoInterval = null;
+
+  function broadcastPomoState() {
+    if (win) {
+      win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+    }
+  }
+
+  function startPomo() {
+    if (pomoInterval) clearInterval(pomoInterval);
+    pomoRunning = true;
+    pomoInterval = setInterval(() => {
+      if (pomoTime > 0) {
+        pomoTime--;
+        if (pomoTime === 10 || pomoTime === 0) {
+          showWindow();
+        }
+      } else {
+        stopPomo();
+      }
+      broadcastPomoState();
+    }, 1000);
+    broadcastPomoState();
+  }
+
+  function stopPomo() {
+    pomoRunning = false;
+    if (pomoInterval) clearInterval(pomoInterval);
+    pomoInterval = null;
+    broadcastPomoState();
+  }
+
+  ipcMain.on('pomo-toggle', () => {
+    if (pomoRunning) stopPomo();
+    else startPomo();
+  });
+
+  ipcMain.on('pomo-set-duration', (event, minutes) => {
+    pomoDuration = minutes;
+    pomoTime = minutes * 60;
+    broadcastPomoState();
+  });
+
+  ipcMain.on('pomo-get-state', (event) => {
+    event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+  });
+
+  ipcMain.handle('get-version', () => {
+    return app.getVersion();
+  });
+
+  let currentLang = 'zh-TW';
+  try {
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf8');
+      currentLang = JSON.parse(data).lang || 'zh-TW';
+    }
+  } catch (e) {
+    console.error('Failed to load initial lang:', e);
+  }
 
 function createWindow() {
   win = new BrowserWindow({
@@ -312,32 +311,30 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });
 
-ipcMain.on('open-history-window', () => {
-  if (historyWin) {
-    historyWin.focus();
-    return;
-  }
-  
-  historyWin = new BrowserWindow({
-    width: 900,
-    height: 600,
-    backgroundColor: '#19191c',
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
+  ipcMain.on('open-taskmanager-window', () => {
+    if (taskManagerWin) {
+      taskManagerWin.focus();
+      return;
     }
+    
+    taskManagerWin = new BrowserWindow({
+      width: 900,
+      height: 600,
+      backgroundColor: '#19191c',
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+    
+    taskManagerWin.loadFile('taskmanager.html');
+    
+    taskManagerWin.on('closed', () => {
+      taskManagerWin = null;
+    });
   });
-  
-  historyWin.loadFile('history.html');
-  
-  // To avoid keeping the main app hidden if focused on history window, we might disable blur-hide temporarily,
-  // but for now, they are independent.
-  historyWin.on('closed', () => {
-    historyWin = null;
-  });
-});
 
 ipcMain.on('open-archive-window', () => {
   if (archiveWin) {
@@ -464,8 +461,8 @@ ipcMain.handle('save-todos', (event, todos) => {
   try {
     fs.writeFileSync(storePath, JSON.stringify(todos, null, 2));
     
-    if (historyWin) {
-      historyWin.webContents.send('todos-updated');
+    if (taskManagerWin) {
+      taskManagerWin.webContents.send('todos-updated');
     }
     win.webContents.send('todos-updated');
     
@@ -505,7 +502,7 @@ ipcMain.handle('save-config', (event, config) => {
 
     // Broadcast language change to all windows
     if (win) win.webContents.send('language-changed', config.lang);
-    if (historyWin) historyWin.webContents.send('language-changed', config.lang);
+    if (taskManagerWin) taskManagerWin.webContents.send('language-changed', config.lang);
     if (archiveWin) archiveWin.webContents.send('language-changed', config.lang);
     if (aboutWin) aboutWin.webContents.send('language-changed', config.lang);
     return true;
@@ -570,6 +567,31 @@ ipcMain.handle('delete-archive-item', (event, { id, fileIndex }) => {
   } catch (error) {
     console.error('Failed to delete archive item:', error);
     return false;
+  }
+});
+
+ipcMain.on('remove-from-archive', (event, todosToRemove) => {
+  try {
+    const userDataPath = app.getPath('userData');
+    const idsToRemove = todosToRemove.map(t => t.id);
+
+    for (let i = 1; i <= 5; i++) {
+      let filePath = path.join(userDataPath, `archive_todos_${i}.json`);
+      if (fs.existsSync(filePath)) {
+        let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        let originalLength = data.length;
+        data = data.filter(item => !idsToRemove.includes(item.id));
+        
+        if (data.length !== originalLength) {
+          fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+        }
+      }
+    }
+    if (archiveWin) {
+      archiveWin.webContents.send('archives-updated');
+    }
+  } catch (error) {
+    console.error('Failed to remove from archive on undo:', error);
   }
 });
 

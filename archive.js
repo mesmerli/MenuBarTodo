@@ -1,15 +1,22 @@
+// DOM Hooks for the Archive system
 const tbody = document.getElementById('archive-tbody');
 const searchInput = document.getElementById('search-input');
 const undoBtn = document.getElementById('undo-btn');
 const sortHeaders = document.querySelectorAll('th[data-sort]');
 
+// Internal state for filtering, sorting, and managing data
 let archives = [];
-let deletedHistory = [];
+let deleteHistory = [];
 let searchQuery = '';
 let currentFilter = 'all';
 let sortColumn = 'archiveAt';
 let sortAsc = false;
 
+/**
+ * Safely parses text and creates clickable HTML anchor tags for URLs
+ * @param {HTMLElement} container The wrapper to append text/links to
+ * @param {string} text Raw task text content
+ */
 function renderTaskText(container, text) {
   container.innerHTML = '';
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -27,7 +34,7 @@ function renderTaskText(container, text) {
       a.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        window.api.openUrl(part);
+        window.api.openUrl(part); // Safe sandbox URL launch via IPC
       });
       container.appendChild(a);
     } else {
@@ -69,11 +76,11 @@ async function init() {
 
   if (undoBtn) {
     undoBtn.addEventListener('click', async () => {
-      if (deletedHistory.length > 0) {
-        const lastDeleted = deletedHistory.pop();
+      if (deleteHistory.length > 0) {
+        const lastDeleted = deleteHistory.pop();
         const success = await window.api.restoreArchiveItem(lastDeleted.item, lastDeleted.fileIndex);
         if (success) {
-          undoBtn.disabled = deletedHistory.length === 0;
+          undoBtn.disabled = deleteHistory.length === 0;
           await loadData();
         }
       }
@@ -144,9 +151,10 @@ function renderTable() {
         valA = a.dueDate || 0;
         valB = b.dueDate || 0;
         break;
+      case 'archiveAt':
       default:
-        valA = a.dueDate || 0;
-        valB = b.dueDate || 0;
+        valA = a.archiveAt || a.id;
+        valB = b.archiveAt || b.id;
     }
     
     if (valA < valB) return sortAsc ? -1 : 1;
@@ -215,8 +223,8 @@ function renderTable() {
     deleteBtn.addEventListener('click', async () => {
       const success = await window.api.deleteArchiveItem(item.id, item._fileIndex);
       if (success) {
-        deletedHistory.push({ item: { ...item }, fileIndex: item._fileIndex });
-        if (deletedHistory.length > 10) deletedHistory.shift();
+        deleteHistory.push({ item: { ...item }, fileIndex: item._fileIndex });
+        if (deleteHistory.length > 100) deleteHistory.shift();
         undoBtn.disabled = false;
         await loadData();
       }

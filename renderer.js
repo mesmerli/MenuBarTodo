@@ -129,7 +129,7 @@ tabBtns.forEach(btn => {
 
 if (settingsBtn) {
   settingsBtn.addEventListener('click', () => {
-    window.api.openHistoryWindow();
+    window.api.openTaskManagerWindow();
   });
 }
 
@@ -290,8 +290,11 @@ function renderTodos() {
     dueSpan.textContent = `${month}/${day} ${hours}:${mins}${isOverdue ? ' !' : ''}`;
     if (isOverdue) dueSpan.classList.add('overdue');
     
+    // Handle inline due date editing on click
     dueSpan.addEventListener('click', (e) => {
-      e.stopPropagation();
+      e.stopPropagation(); // Prevent triggering parent task click events
+      
+      // Format existing due date to YYYY-MM-DDTHH:MM for HTML5 input
       const current = new Date(dueDateVal);
       const y = current.getFullYear();
       const m = (current.getMonth() + 1).toString().padStart(2, '0');
@@ -299,6 +302,7 @@ function renderTodos() {
       const h = current.getHours().toString().padStart(2, '0');
       const min = current.getMinutes().toString().padStart(2, '0');
 
+      // Create datetime-local input overlay
       const input = document.createElement('input');
       input.type = 'datetime-local';
       input.className = 'edit-input';
@@ -309,6 +313,7 @@ function renderTodos() {
       input.style.border = '1px solid var(--accent)';
       input.style.borderRadius = '4px';
       
+      // Function to save the new due date to disk
       const saveDue = async () => {
         if (input.value) {
           const newDate = new Date(input.value);
@@ -320,9 +325,10 @@ function renderTodos() {
             }
           }
         }
-        renderTodos();
+        renderTodos(); // Refresh visual states
       };
 
+      // Persist edits on losing focus or confirmation
       input.addEventListener('blur', saveDue);
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') input.blur();
@@ -371,7 +377,7 @@ input.addEventListener('keydown', async (e) => {
   }
 });
 
-// Offline Voice Recognition with Vosk-WASM
+// Offline Voice Recognition via Vosk-WASM
 const voiceBtn = document.getElementById('voice-btn');
 let model = null;
 let recognizer = null;
@@ -379,8 +385,12 @@ let audioContext = null;
 let source = null;
 let processor = null;
 
+/**
+ * Starts audio recording and feeds raw PCM streams into the Vosk engine
+ */
 async function startVosk() {
   try {
+    // Load the respective model dynamically based on locale if not cached
     if (!model) {
       voiceBtn.style.opacity = '0.5';
       const modelPath = window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz';
@@ -390,25 +400,29 @@ async function startVosk() {
       voiceBtn.style.opacity = '1';
     }
 
+    // Initialize inference recognizer at standard 16kHz sample rate
     if (!recognizer) {
       recognizer = new model.KaldiRecognizer(16000);
-      recognizer.setWords(true);
+      recognizer.setWords(true); // Capture precise timestamps per word if needed
       
+      // Finalized full phrase detection
       recognizer.on("result", (message) => {
         const result = message.result;
         if (result.text) {
           input.value = result.text;
+          // Auto-commit transcribed text into Todo item after a brief pause
           setTimeout(async () => {
             const text = input.value.trim();
             if (text) {
               input.value = '';
-              stopVosk();
+              stopVosk(); // Release microphone hardware
               await handleNewTodo(text);
             }
           }, 800);
         }
       });
 
+      // Live ongoing partial speech transcription (real-time updates)
       recognizer.on("partialresult", (message) => {
         const partial = message.result.partial;
         if (partial) {
@@ -417,6 +431,7 @@ async function startVosk() {
       });
     }
 
+    // Connect directly to hardware microphone via browser Media Capture
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
@@ -426,10 +441,12 @@ async function startVosk() {
       },
     });
 
+    // Route audio signals: Mic -> AudioContext -> ScriptProcessor -> Vosk Engine
     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
     source = audioContext.createMediaStreamSource(stream);
     processor = audioContext.createScriptProcessor(4096, 1, 1);
 
+    // Continually pipe raw PCM audio buffers into standard inference loop
     processor.onaudioprocess = (event) => {
       recognizer.acceptWaveform(event.inputBuffer);
     };
@@ -437,7 +454,7 @@ async function startVosk() {
     source.connect(processor);
     processor.connect(audioContext.destination);
     
-    voiceBtn.classList.add('listening');
+    voiceBtn.classList.add('listening'); // Trigger CSS pulse animations
   } catch (err) {
     console.error('Vosk Start Error:', err);
     alert('Failed to start voice recognition. Please ensure models are installed in /models folder.');
@@ -445,6 +462,9 @@ async function startVosk() {
   }
 }
 
+/**
+ * Safely detaches the audio stream and frees native system resources
+ */
 function stopVosk() {
   if (processor) {
     processor.disconnect();

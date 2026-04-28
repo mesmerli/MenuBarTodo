@@ -1,3 +1,4 @@
+// DOM Hooks for the Task Management Interface
 const tbody = document.getElementById('history-tbody');
 const filterBtns = document.querySelectorAll('.filters .tab');
 const clearAllBtn = document.getElementById('clear-all-btn');
@@ -7,14 +8,20 @@ const searchInput = document.getElementById('search-input');
 const todoInput = document.getElementById('todo-input');
 const sortHeaders = document.querySelectorAll('th[data-sort]');
 
+// Local component state management
 let todos = [];
 let currentFilter = 'all';
 let searchQuery = '';
-let sortColumn = 'completedAt';
+let sortColumn = 'createdAt';
 let sortAsc = false;
-let deletedHistory = []; // Stack of deleted tasks (up to 10)
+let archiveHistory = []; // Stack of recently archived tasks for quick Undo retrieval
 let isSaving = false;
 
+/**
+ * Helper to scan task texts and transform standard links into interactive clickables
+ * @param {HTMLElement} container Task row target cell
+ * @param {string} text Task label string
+ */
 function renderTaskText(container, text) {
   container.innerHTML = '';
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -223,8 +230,8 @@ async function init() {
     const completedTodos = todos.filter(t => t.completed);
     if (completedTodos.length > 0) {
       window.api.archiveTodos(completedTodos);
-      deletedHistory.push(completedTodos);
-      if (deletedHistory.length > 10) deletedHistory.shift();
+      archiveHistory.push(completedTodos);
+      if (archiveHistory.length > 100) archiveHistory.shift();
       undoBtn.disabled = false;
       
       todos = todos.filter(t => !t.completed);
@@ -236,10 +243,14 @@ async function init() {
   });
 
   undoBtn.addEventListener('click', async () => {
-    if (deletedHistory.length > 0) {
-      const lastDeleted = deletedHistory.pop();
-      todos = [...todos, ...lastDeleted];
-      undoBtn.disabled = deletedHistory.length === 0;
+    if (archiveHistory.length > 0) {
+      const lastArchived = archiveHistory.pop();
+      
+      // Remove these restored tasks from rotation archives
+      window.api.removeFromArchive(lastArchived);
+      
+      todos = [...todos, ...lastArchived];
+      undoBtn.disabled = archiveHistory.length === 0;
       isSaving = true;
       await window.api.saveTodos(todos);
       isSaving = false;
@@ -379,10 +390,10 @@ function renderTable() {
     });
     statusCell.appendChild(checkbox);
 
-    // Delete btn
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-icon-btn';
-    deleteBtn.innerHTML = `
+    // Archive item btn
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'delete-icon-btn';
+    archiveBtn.innerHTML = `
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="21 8 21 21 3 21 3 8"></polyline>
         <rect x="1" y="3" width="22" height="5"></rect>
@@ -390,10 +401,10 @@ function renderTable() {
         <line x1="12" y1="8" x2="12" y2="14"></line>
       </svg>
     `;
-    deleteBtn.addEventListener('click', async () => {
+    archiveBtn.addEventListener('click', async () => {
       window.api.archiveTodos([todo]);
-      deletedHistory.push([todo]);
-      if (deletedHistory.length > 10) deletedHistory.shift();
+      archiveHistory.push([todo]);
+      if (archiveHistory.length > 100) archiveHistory.shift();
       undoBtn.disabled = false;
       
       todos = todos.filter(t => t.id !== todo.id);
@@ -512,7 +523,7 @@ function renderTable() {
     
     tbody.appendChild(tr);
     tr.querySelector('.status-cell').appendChild(checkbox);
-    tr.querySelector('.action-cell').appendChild(deleteBtn);
+    tr.querySelector('.action-cell').appendChild(archiveBtn);
   });
 }
 
