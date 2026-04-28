@@ -14,12 +14,62 @@ let currentDimension = 'day';
 let pomoDuration = 30; 
 let pomoTime = pomoDuration * 60;
 let pomoRunning = false;
+let hasPlayedDing = false;
+
+let pomoConfiguredSeconds = 30 * 60;
+
+function playTickSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+    
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  } catch (e) {
+    console.error('Failed to play tick sound:', e);
+  }
+}
+
+function playDingSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 tone
+    
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.2);
+  } catch (e) {
+    console.error('Failed to play ding sound:', e);
+  }
+}
 
 function updatePomoDisplay(state) {
   if (state) {
     pomoTime = state.pomoTime;
     pomoRunning = state.pomoRunning;
     pomoDuration = state.pomoDuration;
+    if (state.pomoConfiguredSeconds !== undefined) {
+      pomoConfiguredSeconds = state.pomoConfiguredSeconds;
+    }
   }
   const m = Math.floor(pomoTime / 60).toString().padStart(2, '0');
   const s = (pomoTime % 60).toString().padStart(2, '0');
@@ -27,8 +77,10 @@ function updatePomoDisplay(state) {
   
   if (pomoRunning) {
     pomoBtn.style.color = 'var(--accent)';
+    hasPlayedDing = false; 
     if (pomoTime <= 10 && pomoTime > 0) {
       pomoTimerDisplay.classList.add('pomo-flashing');
+      playTickSound();
     } else {
       pomoTimerDisplay.classList.remove('pomo-flashing');
     }
@@ -36,6 +88,10 @@ function updatePomoDisplay(state) {
     pomoBtn.style.color = 'inherit';
     if (pomoTime === 0) {
       pomoTimerDisplay.classList.add('pomo-flashing');
+      if (!hasPlayedDing) {
+        playDingSound();
+        hasPlayedDing = true;
+      }
     } else {
       pomoTimerDisplay.classList.remove('pomo-flashing');
     }
@@ -51,28 +107,74 @@ if (pomoTimerDisplay) {
     if (pomoRunning) return; 
     
     const input = document.createElement('input');
-    input.type = 'number';
-    input.value = pomoDuration;
-    input.style.width = '40px';
-    input.style.fontSize = '14px';
+    input.type = 'text';
+    
+    // If countdown reached zero, fallback to last manual duration
+    const targetTime = pomoTime === 0 ? pomoConfiguredSeconds : pomoTime;
+    const curM = Math.floor(targetTime / 60).toString().padStart(2, '0');
+    const curS = (targetTime % 60).toString().padStart(2, '0');
+    input.value = `${curM}:${curS}`;
+    
+    input.style.width = '75px';
+    input.style.fontSize = '18px';
+    input.style.fontWeight = 'bold';
+    input.style.textAlign = 'center';
     input.style.color = 'var(--accent)';
-    input.style.background = 'transparent';
-    input.style.border = 'none';
+    input.style.background = 'rgba(0, 0, 0, 0.2)';
+    input.style.border = '1px solid var(--glass-border)';
+    input.style.borderRadius = '4px';
     input.style.outline = 'none';
     input.style.fontFamily = 'monospace';
-    input.min = 1;
+    
+    input.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const parts = input.value.trim().split(':');
+      let mins = parseInt(parts[0]) || 0;
+      let secs = parts[1] !== undefined ? (parseInt(parts[1]) || 0) : 0;
+      
+      if (e.deltaY < 0) {
+        mins += 1;
+      } else {
+        if (mins > 0) mins -= 1;
+      }
+      
+      input.value = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    });
     
     const savePomo = () => {
-      const val = parseInt(input.value);
-      if (!isNaN(val) && val > 0) {
-        window.api.pomoSetDuration(val);
-      } else {
-        updatePomoDisplay();
+      const parts = input.value.trim().split(':');
+      let mins = 30;
+      let secs = 0;
+      
+      if (parts.length >= 1) {
+        mins = parseInt(parts[0]) || 0;
       }
+      if (parts.length >= 2) {
+        secs = parseInt(parts[1]) || 0;
+      }
+      
+      const totalSeconds = Math.max(1, mins * 60 + secs);
+      window.api.pomoSetDuration(totalSeconds);
     };
 
     input.addEventListener('blur', savePomo);
     input.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const parts = input.value.trim().split(':');
+        let mins = parseInt(parts[0]) || 0;
+        let secs = parts[1] !== undefined ? (parseInt(parts[1]) || 0) : 0;
+        
+        if (e.key === 'ArrowUp') {
+          mins += 1;
+        } else {
+          if (mins > 0) mins -= 1;
+        }
+        
+        input.value = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        return;
+      }
+      
       if (e.key === 'Enter') input.blur();
       if (e.key === 'Escape') {
         input.removeEventListener('blur', savePomo);
@@ -141,6 +243,10 @@ if (mainUndoBtn) {
       mainUndoBtn.disabled = deletedHistory.length === 0;
       renderTodos();
       await window.api.saveTodos(todos);
+      
+      if (window.api.removeFromArchive) {
+        window.api.removeFromArchive(lastDeleted);
+      }
     }
   });
 }

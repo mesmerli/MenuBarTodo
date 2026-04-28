@@ -59,6 +59,15 @@
 - [x] **Queue Buffer Upgrades**:
   - Broadened backward recovery stacks handling safe operational intervals accommodating larger workflows.
 
+### v1.3.0 — Pomodoro Enhancements & Desktop Overlays
+- [x] **Precision Pomodoro**:
+  - Redesigned time-setting experience: users now edit full `MM:SS` timestamps natively.
+  - Integrated mouse wheel increments and ArrowUp/ArrowDown adjustments.
+  - Added 10s audio countdown (ticking) alongside a concluding Ding notification.
+- [x] **Persistent State Overlays**:
+  - Ensured uninterrupted countdown execution while transitioning widget view frames.
+  - Enabled standalone transparent overlay support ensuring layout fidelity.
+
 ## Proposed Future Changes
 
 ### Enhanced Search

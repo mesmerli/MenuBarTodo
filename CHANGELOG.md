@@ -4,6 +4,13 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.3.0] - 2026-04-28
+- **Added**: Pomodoro Timer enhancements: support setting `MM:SS`, ArrowUp/Down adjustments, and mouse wheel scrolling.
+- **Added**: Sound effects: Countdown tick-tock audio (10s to 1s) and final completion Ding bell.
+- **Improved**: Widget Mode continuity allows uninterrupted timers across framework window state toggles.
+- **Improved**: Taskbar unification routes child view layouts seamlessly under one unified user process instance.
+- **Fixed**: Inline drag blockers allowing smooth pointer actions on embedded background surfaces.
+
 ### [1.2.1] - 2026-04-28
 - **Added**: Direct task removal from physical rolling archives upon undo action in Task Manager.
 - **Improved**: Renamed `history.*` files completely into `taskmanager.*` for modern UI conventions.

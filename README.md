@@ -14,6 +14,11 @@
 - 📅 **Multi-dimensional View**: Organize and view tasks across "Day, Week, and Month" dimensions.
 - 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
 - 🛠️ **Advanced Management**: Dedicated management window with real-time search, inline editing, and multi-column sorting.
+- 🍅 **Enhanced Pomodoro**: 
+  - Support custom full `MM:SS` precision editing.
+  - Scroll or tap arrow shortcuts to quickly iterate time slices.
+  - Embedded audio clock triggers (tick-tock sequence and Ding completion).
+- 🪟 **Floating Widget Mode**: Freely isolate floating widgets without stopping ongoing focus flows.
 - 📥 **Smart Archive System**: 
   - **Auto-Archive**: Completed tasks are automatically moved to the archive after a set duration (1 day for Daily, 7 days for Weekly, 30 days for Monthly tasks).
   - **Dedicated Viewer**: Manage archived tasks with search, filtering, and permanent deletion.

@@ -30,6 +30,11 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  -webkit-app-region: drag;
+}
+
+button, input, .tab, .todo-item, .pomodoro-container, #pomo-timer {
+  -webkit-app-region: no-drag;
 }
 
 .tabs {
@@ -75,6 +80,12 @@ body {
 .settings-btn:hover {
   color: var(--text-primary);
   transform: rotate(45deg);
+}
+
+.settings-btn:disabled {
+  color: rgba(140, 140, 147, 0.3) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
 }
 
 .header { padding: 16px; border-bottom: 1px solid var(--glass-border); }
@@ -274,4 +285,10 @@ body {
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
 }

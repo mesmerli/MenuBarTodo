@@ -101,6 +101,12 @@ h1 {
   transform: scale(0.95);
 }
 
+.icon-action-btn.active {
+  background: rgba(94, 106, 210, 0.25) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
 .icon-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

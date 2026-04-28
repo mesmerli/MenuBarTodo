@@ -2,6 +2,8 @@ const { app, BrowserWindow, Tray, globalShortcut, ipcMain, nativeImage, screen, 
 const path = require('path');
 const fs = require('fs');
 
+app.setAppUserModelId('com.mesmerli.menubartodo');
+
 // Register local-model custom scheme to enable Fetch API access to local offline models
 protocol.registerSchemesAsPrivileged([
   { scheme: 'local-model', privileges: { secure: true, standard: true, supportFetchAPI: true, bypassCSP: true, allowServiceWorkers: true } }
@@ -51,12 +53,13 @@ if (!gotTheLock) {
 
   let pomoDuration = 30;
   let pomoTime = pomoDuration * 60;
+  let pomoConfiguredSeconds = pomoDuration * 60;
   let pomoRunning = false;
   let pomoInterval = null;
 
   function broadcastPomoState() {
     if (win) {
-      win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+      win.webContents.send('pomo-tick', { pomoTime, pomoRunning, pomoDuration, pomoConfiguredSeconds });
     }
   }
 
@@ -85,18 +88,36 @@ if (!gotTheLock) {
   }
 
   ipcMain.on('pomo-toggle', () => {
-    if (pomoRunning) stopPomo();
-    else startPomo();
+    if (pomoRunning) {
+      stopPomo();
+    } else {
+      if (pomoTime === 0) {
+        pomoTime = pomoConfiguredSeconds;
+      }
+      startPomo();
+    }
   });
 
-  ipcMain.on('pomo-set-duration', (event, minutes) => {
-    pomoDuration = minutes;
-    pomoTime = minutes * 60;
+  ipcMain.on('pomo-set-duration', (event, totalSeconds) => {
+    pomoDuration = Math.floor(totalSeconds / 60);
+    pomoConfiguredSeconds = totalSeconds;
+    pomoTime = totalSeconds;
     broadcastPomoState();
+    
+    try {
+      let config = {};
+      if (fs.existsSync(configPath)) {
+        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      }
+      config.pomoConfiguredSeconds = totalSeconds;
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    } catch (e) {
+      console.error('Failed to save pomo settings to config:', e);
+    }
   });
-
+ 
   ipcMain.on('pomo-get-state', (event) => {
-    event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration });
+    event.reply('pomo-tick', { pomoTime, pomoRunning, pomoDuration, pomoConfiguredSeconds });
   });
 
   ipcMain.handle('get-version', () => {
@@ -104,25 +125,46 @@ if (!gotTheLock) {
   });
 
   let currentLang = 'zh-TW';
+  let isWidgetMode = false;
   try {
     if (fs.existsSync(configPath)) {
       const data = fs.readFileSync(configPath, 'utf8');
-      currentLang = JSON.parse(data).lang || 'zh-TW';
+      const parsed = JSON.parse(data);
+      currentLang = parsed.lang || 'zh-TW';
+      isWidgetMode = !!parsed.widgetMode;
+      if (parsed.pomoConfiguredSeconds !== undefined) {
+        pomoConfiguredSeconds = parsed.pomoConfiguredSeconds;
+        pomoDuration = Math.floor(pomoConfiguredSeconds / 60);
+        pomoTime = pomoConfiguredSeconds;
+      }
+      if (parsed.pomoRunning) {
+        pomoTime = parsed.pomoTime !== undefined ? parsed.pomoTime : pomoTime;
+        try {
+          const updatedConfig = { ...parsed };
+          delete updatedConfig.pomoRunning;
+          delete updatedConfig.pomoTime;
+          fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
+        } catch (e) {}
+        setTimeout(() => {
+          startPomo();
+        }, 1000);
+      }
     }
   } catch (e) {
-    console.error('Failed to load initial lang:', e);
+    console.error('Failed to load initial config:', e);
   }
 
 function createWindow() {
   win = new BrowserWindow({
     width: 360,
     height: 450,
-    show: false,
+    show: isWidgetMode,
     frame: false,
     fullscreenable: false,
     resizable: false,
     transparent: true,
-    skipTaskbar: true,
+    skipTaskbar: false,
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -132,12 +174,51 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  win.on('blur', () => {
-    win.hide();
-  });
+  if (!isWidgetMode) {
+    win.on('blur', () => {
+      win.hide();
+    });
+  } else {
+    win.on('moved', () => {
+      const [x, y] = win.getPosition();
+      try {
+        let config = {};
+        if (fs.existsSync(configPath)) {
+          config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+        config.widgetX = x;
+        config.widgetY = y;
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      } catch (e) {
+        console.error('Failed to save widget position:', e);
+      }
+    });
+
+    try {
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (config.widgetX !== undefined && config.widgetY !== undefined) {
+          win.setPosition(config.widgetX, config.widgetY, false);
+        }
+      }
+    } catch (e) {}
+  }
 }
 
 function toggleWindow() {
+  if (isWidgetMode) {
+    // Force visibility refresh to jump above overlapping windows
+    win.hide();
+    win.show();
+    win.focus();
+    // Set to front temporarily
+    win.setAlwaysOnTop(true, 'screen-saver');
+    setTimeout(() => {
+      if (win) win.setAlwaysOnTop(false);
+    }, 1000);
+    return;
+  }
+
   if (win.isVisible()) {
     win.hide();
   } else {
@@ -146,8 +227,20 @@ function toggleWindow() {
 }
 
 function showWindow() {
-  if (!win || !tray) return;
+  if (!win) return;
 
+  if (isWidgetMode) {
+    win.hide();
+    win.show();
+    win.focus();
+    win.setAlwaysOnTop(true, 'screen-saver');
+    setTimeout(() => {
+      if (win) win.setAlwaysOnTop(false);
+    }, 1000);
+    return;
+  }
+
+  if (!tray) return;
   const trayPos = tray.getBounds();
   const winPos = win.getBounds();
   
@@ -277,6 +370,7 @@ function updateTrayMenu() {
         maximizable: false,
         alwaysOnTop: true,
         backgroundColor: '#19191c',
+        icon: path.join(__dirname, 'icon.png'),
         webPreferences: {
           preload: path.join(__dirname, 'preload.js'),
           nodeIntegration: false,
@@ -322,6 +416,8 @@ app.on('will-quit', () => {
       height: 600,
       backgroundColor: '#19191c',
       autoHideMenuBar: true,
+      icon: path.join(__dirname, 'icon.png'),
+      skipTaskbar: true,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
@@ -347,6 +443,8 @@ ipcMain.on('open-archive-window', () => {
     height: 600,
     backgroundColor: '#19191c',
     autoHideMenuBar: true,
+    icon: path.join(__dirname, 'icon.png'),
+    skipTaskbar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -634,5 +732,22 @@ ipcMain.handle('restore-archive-item', (event, { item, fileIndex }) => {
 
 ipcMain.on('open-url', (event, url) => {
   shell.openExternal(url);
+});
+
+ipcMain.on('set-widget-mode', (event, enabled) => {
+  try {
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+    config.widgetMode = enabled;
+    config.pomoRunning = pomoRunning;
+    config.pomoTime = pomoTime;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    app.relaunch();
+    app.exit(0);
+  } catch (e) {
+    console.error('Failed to set widgetMode:', e);
+  }
 });
 } // End of single instance lock else block

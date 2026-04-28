@@ -67,6 +67,32 @@ async function init() {
       await window.api.setAutoLaunch(autoLaunchCheckbox.checked);
     });
   }
+
+  const widgetModeBtn = document.getElementById('widget-mode-btn');
+  if (widgetModeBtn) {
+    const config = await window.api.loadConfig();
+    let isWidget = !!config.widgetMode;
+    if (isWidget) {
+      widgetModeBtn.classList.add('active');
+    }
+    
+    widgetModeBtn.addEventListener('click', async () => {
+      const cfg = await window.api.loadConfig();
+      isWidget = !isWidget;
+      cfg.widgetMode = isWidget;
+      await window.api.saveConfig(cfg);
+      
+      if (isWidget) {
+        widgetModeBtn.classList.add('active');
+      } else {
+        widgetModeBtn.classList.remove('active');
+      }
+      
+      if (window.api.setWidgetMode) {
+        window.api.setWidgetMode(isWidget);
+      }
+    });
+  }
   
   window.api.onLanguageChanged((lang) => {
     window.i18n.lang = lang;

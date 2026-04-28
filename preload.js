@@ -24,5 +24,6 @@ contextBridge.exposeInMainWorld('api', {
   pomoSetDuration: (mins) => ipcRenderer.send('pomo-set-duration', mins),
   pomoGetState: () => ipcRenderer.send('pomo-get-state'),
   onPomoTick: (callback) => ipcRenderer.on('pomo-tick', (event, state) => callback(state)),
-  getVersion: () => ipcRenderer.invoke('get-version')
+  getVersion: () => ipcRenderer.invoke('get-version'),
+  setWidgetMode: (enabled) => ipcRenderer.send('set-widget-mode', enabled)
 });
