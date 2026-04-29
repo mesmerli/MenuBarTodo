@@ -1,6 +1,6 @@
 {
   "name": "menubar-todo",
-  "version": "1.4.2-build.000009",
+  "version": "1.4.2-build.000012",
   "description": "A minimal menubar todo app",
   "main": "main.js",
   "scripts": {
@@ -55,8 +55,7 @@
         "zh-TW",
         "en-US"
       ],
-      "addAutoLaunchExtension": true,
-      "assets": "build/appx"
+      "addAutoLaunchExtension": true
     },
     "directories": {
       "output": "dist"
