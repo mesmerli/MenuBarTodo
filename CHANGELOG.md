@@ -6,6 +6,7 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ### [1.4.2] - 2026-04-28
 - **Added**: Expanded dual Undo support covering state toggles and custom deadline adjustments.
+- **Fixed**: Resolved `Not allowed to load local resource` crashes by aligning renamed UI files (`taskmanager.*`) inside production build mappings.
 
 ### [1.4.1] - 2026-04-28
 - **Added**: Persistent 6-digit auto-incrementing build tracker (`bump-build.js`).

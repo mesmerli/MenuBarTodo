@@ -172,7 +172,7 @@ function createWindow() {
     }
   });
 
-  win.loadFile('index.html');
+  win.loadFile(path.join(__dirname, 'index.html'));
 
   if (!isWidgetMode) {
     win.on('blur', () => {
@@ -289,8 +289,10 @@ app.whenReady().then(() => {
       logToFile(`[Protocol] Request: ${request.url} -> ${absolutePath}`);
       
       if (fs.existsSync(absolutePath)) {
-        const { pathToFileURL } = require('url');
-        return await net.fetch(pathToFileURL(absolutePath).toString());
+        const fileBuffer = fs.readFileSync(absolutePath);
+        return new Response(fileBuffer, {
+          headers: { 'Content-Type': 'application/octet-stream' }
+        });
       } else {
         logToFile(`[Protocol] File not found: ${absolutePath}`);
         return new Response('File Not Found', { status: 404 });
@@ -378,7 +380,7 @@ function updateTrayMenu() {
         }
       });
       aboutWin.setMenuBarVisibility(false);
-      aboutWin.loadFile('about.html');
+      aboutWin.loadFile(path.join(__dirname, 'about.html'));
       aboutWin.on('closed', () => { aboutWin = null; });
     }},
     { type: 'separator' },
@@ -425,7 +427,7 @@ app.on('will-quit', () => {
       }
     });
     
-    taskManagerWin.loadFile('taskmanager.html');
+    taskManagerWin.loadFile(path.join(__dirname, 'taskmanager.html'));
     
     taskManagerWin.on('closed', () => {
       taskManagerWin = null;
@@ -452,7 +454,7 @@ ipcMain.on('open-archive-window', () => {
     }
   });
   
-  archiveWin.loadFile('archive.html');
+  archiveWin.loadFile(path.join(__dirname, 'archive.html'));
   
   archiveWin.on('closed', () => {
     archiveWin = null;
