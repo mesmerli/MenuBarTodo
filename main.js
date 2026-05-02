@@ -27,6 +27,21 @@ if (!gotTheLock) {
   let taskManagerWin = null;
   let archiveWin = null;
   let aboutWin = null;
+  let globalUndoStack = [];
+  let globalRedoStack = [];
+  let todosCache = [];
+
+  function broadcastUndoState() {
+    const state = { 
+      canUndo: globalUndoStack.length > 0,
+      canRedo: globalRedoStack.length > 0
+    };
+    [win, taskManagerWin, archiveWin].forEach(w => {
+      if (w && !w.isDestroyed()) {
+        w.webContents.send('undo-state-updated', state);
+      }
+    });
+  }
 
   const storePath = path.join(app.getPath('userData'), 'todos.json');
   const configPath = path.join(app.getPath('userData'), 'config.json');
@@ -503,8 +518,10 @@ function archiveTodosInternal(todosToArchive) {
     if (archiveWin) {
       archiveWin.webContents.send('archives-updated');
     }
+    return currentIndex;
   } catch (error) {
     console.error('Failed internal archive:', error);
+    return null;
   }
 }
 
@@ -542,14 +559,238 @@ function autoArchiveTodos(todos) {
   
   return remaining;
 }
+ipcMain.on('push-undo-action', (event, action) => {
+  globalUndoStack.push(action);
+  if (globalUndoStack.length > 100) globalUndoStack.shift();
+  globalRedoStack = []; // Clear redo on new action
+  broadcastUndoState();
+});
+
+ipcMain.handle('get-undo-state', () => {
+  return { 
+    canUndo: globalUndoStack.length > 0,
+    canRedo: globalRedoStack.length > 0
+  };
+});
+
+ipcMain.handle('perform-undo', async () => {
+  if (globalUndoStack.length === 0) return false;
+  const action = globalUndoStack.pop();
+  globalRedoStack.push(action);
+  
+  try {
+    const userDataPath = app.getPath('userData');
+    let mainTodos = [...todosCache];
+    
+    // If cache is empty, try loading from file once
+    if (mainTodos.length === 0 && fs.existsSync(storePath)) {
+      mainTodos = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+    }
+
+    switch (action.type) {
+      case 'ARCHIVE': {
+        // Items were moved to archive. Put them back in main list.
+        if (action.fileIndex) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          if (fs.existsSync(archivePath)) {
+            let archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+            const idsToRemove = action.items.map(t => t.id);
+            archiveData = archiveData.filter(t => !idsToRemove.includes(t.id));
+            fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+          }
+        }
+        mainTodos = [...action.items, ...mainTodos];
+        break;
+      }
+      case 'TOGGLE': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.completed = action.wasCompleted;
+          if (!todo.completed) {
+            delete todo.completedAt;
+          } else {
+            todo.completedAt = action.completedAt || Date.now();
+          }
+        } else {
+          const todoStr = mainTodos.find(t => String(t.id) === String(action.id));
+          if (todoStr) {
+            todoStr.completed = action.wasCompleted;
+          }
+        }
+        break;
+      }
+      case 'EDIT_DUEDATE': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.dueDate = action.wasDueDate;
+        } else {
+          const todoStr = mainTodos.find(t => String(t.id) === String(action.id));
+          if (todoStr) {
+            todoStr.dueDate = action.wasDueDate;
+          }
+        }
+        break;
+      }
+      case 'EDIT_DIMENSION': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.dimension = action.wasDimension;
+        }
+        break;
+      }
+      case 'RESTORE': {
+        // Items were restored from archive. Put them back in archive.
+        const idsToRemove = action.items.map(t => t.id);
+        mainTodos = mainTodos.filter(t => !idsToRemove.includes(t.id));
+        if (action.fileIndex) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          let archiveData = [];
+          if (fs.existsSync(archivePath)) {
+            archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+          }
+          archiveData = [...action.items, ...archiveData];
+          fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+        }
+        break;
+      }
+      case 'DELETE_PERM': {
+        // Item was deleted from archive. Put it back.
+        if (action.fileIndex && action.item) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          let archiveData = [];
+          if (fs.existsSync(archivePath)) {
+            archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+          }
+          archiveData = [action.item, ...archiveData];
+          fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+        }
+        break;
+      }
+    }
+
+    todosCache = mainTodos;
+    fs.writeFileSync(storePath, JSON.stringify(mainTodos, null, 2));
+    
+    // Broadcast
+    if (win && !win.isDestroyed()) win.webContents.send('todos-updated');
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('todos-updated');
+    if (archiveWin && !archiveWin.isDestroyed()) archiveWin.webContents.send('archives-updated');
+    
+    broadcastUndoState();
+    return true;
+  } catch (err) {
+    console.error('Undo execution failed:', err);
+    return false;
+  }
+});
+
+ipcMain.handle('perform-redo', async () => {
+  if (globalRedoStack.length === 0) return false;
+  const action = globalRedoStack.pop();
+  globalUndoStack.push(action);
+  
+  try {
+    const userDataPath = app.getPath('userData');
+    let mainTodos = [...todosCache];
+    
+    if (mainTodos.length === 0 && fs.existsSync(storePath)) {
+      mainTodos = JSON.parse(fs.readFileSync(storePath, 'utf8'));
+    }
+
+    switch (action.type) {
+      case 'ARCHIVE': {
+        // Redo ARCHIVE: move items back to archive
+        const idsToRemove = action.items.map(t => t.id);
+        mainTodos = mainTodos.filter(t => !idsToRemove.includes(t.id));
+        if (action.fileIndex) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          let archiveData = [];
+          if (fs.existsSync(archivePath)) {
+            archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+          }
+          archiveData = [...action.items, ...archiveData];
+          fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+        }
+        break;
+      }
+      case 'RESTORE': {
+        // Redo RESTORE: move items back to mainTodos
+        if (action.fileIndex) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          if (fs.existsSync(archivePath)) {
+            let archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+            const idsToRemove = action.items.map(t => t.id);
+            archiveData = archiveData.filter(t => !idsToRemove.includes(t.id));
+            fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+          }
+        }
+        mainTodos = [...action.items, ...mainTodos];
+        break;
+      }
+      case 'TOGGLE': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.completed = action.newCompleted;
+          if (!todo.completed) {
+            delete todo.completedAt;
+          } else {
+            todo.completedAt = Date.now();
+          }
+        }
+        break;
+      }
+      case 'EDIT_DUEDATE': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.dueDate = action.newDueDate;
+        }
+        break;
+      }
+      case 'EDIT_DIMENSION': {
+        const todo = mainTodos.find(t => t.id == action.id);
+        if (todo) {
+          todo.dimension = action.newDimension;
+        }
+        break;
+      }
+      case 'DELETE_PERM': {
+        // Redo DELETE_PERM: remove from archive again
+        if (action.fileIndex && action.item) {
+          const archivePath = path.join(userDataPath, `archive_todos_${action.fileIndex}.json`);
+          if (fs.existsSync(archivePath)) {
+            let archiveData = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+            archiveData = archiveData.filter(t => t.id !== action.item.id);
+            fs.writeFileSync(archivePath, JSON.stringify(archiveData, null, 2));
+          }
+        }
+        break;
+      }
+    }
+
+    todosCache = mainTodos;
+    fs.writeFileSync(storePath, JSON.stringify(mainTodos, null, 2));
+    
+    // Broadcast
+    if (win && !win.isDestroyed()) win.webContents.send('todos-updated');
+    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('todos-updated');
+    if (archiveWin && !archiveWin.isDestroyed()) archiveWin.webContents.send('archives-updated');
+    
+    broadcastUndoState();
+    return true;
+  } catch (error) {
+    console.error('Perform redo failed:', error);
+    return false;
+  }
+});
 
 ipcMain.handle('load-todos', () => {
   try {
     if (fs.existsSync(storePath)) {
       const data = fs.readFileSync(storePath, 'utf8');
-      const todos = JSON.parse(data);
-      return autoArchiveTodos(todos);
+      todosCache = JSON.parse(data);
+      return autoArchiveTodos(todosCache);
     }
+    todosCache = [];
     return [];
   } catch (error) {
     console.error('Failed to load todos:', error);
@@ -559,6 +800,7 @@ ipcMain.handle('load-todos', () => {
 
 ipcMain.handle('save-todos', (event, todos) => {
   try {
+    todosCache = todos;
     fs.writeFileSync(storePath, JSON.stringify(todos, null, 2));
     
     if (taskManagerWin && !taskManagerWin.isDestroyed()) {
@@ -575,8 +817,8 @@ ipcMain.handle('save-todos', (event, todos) => {
   }
 });
 
-ipcMain.on('archive-todos', (event, deletedTodos) => {
-  archiveTodosInternal(deletedTodos);
+ipcMain.handle('archive-todos', (event, deletedTodos) => {
+  return archiveTodosInternal(deletedTodos);
 });
 
 ipcMain.handle('load-config', () => {
@@ -730,55 +972,6 @@ ipcMain.handle('restore-archive-item', (event, { item, fileIndex }) => {
     return true;
   } catch (error) {
     console.error('Failed to restore archive item:', error);
-    return false;
-  }
-});
-
-ipcMain.handle('undo-delete-archive-item', (event, { item, fileIndex }) => {
-  try {
-    const userDataPath = app.getPath('userData');
-    const filePath = path.join(userDataPath, `archive_todos_${fileIndex}.json`);
-    let data = [];
-    if (fs.existsSync(filePath)) {
-      data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-    data.unshift(item);
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-    return true;
-  } catch (e) {
-    console.error('Undo delete archive failed:', e);
-    return false;
-  }
-});
-
-ipcMain.handle('undo-restore-archive-item', (event, { item, fileIndex }) => {
-  try {
-    const userDataPath = app.getPath('userData');
-    const mainStorePath = path.join(userDataPath, 'todos.json');
-    
-    // 1. Remove from main todos.json
-    if (fs.existsSync(mainStorePath)) {
-      let mainTodos = JSON.parse(fs.readFileSync(mainStorePath, 'utf8'));
-      mainTodos = mainTodos.filter(t => t.id !== item.id);
-      fs.writeFileSync(mainStorePath, JSON.stringify(mainTodos, null, 2));
-    }
-    
-    // 2. Put back into archive
-    const filePath = path.join(userDataPath, `archive_todos_${fileIndex}.json`);
-    let archiveData = [];
-    if (fs.existsSync(filePath)) {
-      archiveData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    }
-    archiveData.unshift(item);
-    fs.writeFileSync(filePath, JSON.stringify(archiveData, null, 2));
-    
-    // Broadcast
-    if (win && !win.isDestroyed()) win.webContents.send('todos-updated');
-    if (taskManagerWin && !taskManagerWin.isDestroyed()) taskManagerWin.webContents.send('todos-updated');
-    
-    return true;
-  } catch (e) {
-    console.error('Undo restore archive failed:', e);
     return false;
   }
 });

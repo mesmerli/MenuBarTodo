@@ -175,6 +175,107 @@ test.describe('MenuBar Todo E2E Tests', () => {
     await expect(dueSpan).toContainText(originalMatch);
   });
 
+  test('should redo todo completion status', async () => {
+    const input = window.locator('#todo-input');
+    const undoBtn = window.locator('#main-undo-btn');
+    const redoBtn = window.locator('#main-redo-btn');
+
+    const taskText = 'Toggle Redo Test ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const checkbox = todoItem.locator('.todo-checkbox');
+
+    // Toggle to completed
+    await checkbox.check();
+    await expect(checkbox).toBeChecked();
+
+    // Undo
+    await undoBtn.click();
+    await expect(checkbox).not.toBeChecked();
+    await expect(redoBtn).not.toBeDisabled();
+
+    // Redo
+    await redoBtn.click();
+    await expect(checkbox).toBeChecked();
+  });
+
+  test('should redo todo deletion', async () => {
+    const input = window.locator('#todo-input');
+    const undoBtn = window.locator('#main-undo-btn');
+    const redoBtn = window.locator('#main-redo-btn');
+
+    const taskText = 'Delete Redo Test ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const deleteBtn = todoItem.locator('.delete-btn');
+
+    // Delete
+    await deleteBtn.click();
+    await expect(window.locator('#todo-list')).not.toContainText(taskText);
+
+    // Undo
+    await undoBtn.click();
+    await expect(window.locator('#todo-list')).toContainText(taskText);
+    await expect(redoBtn).not.toBeDisabled();
+
+    // Redo
+    await redoBtn.click();
+    await expect(window.locator('#todo-list')).not.toContainText(taskText);
+  });
+
+  test('should redo todo due date change', async () => {
+    const input = window.locator('#todo-input');
+    const undoBtn = window.locator('#main-undo-btn');
+    const redoBtn = window.locator('#main-redo-btn');
+
+    const taskText = 'DueDate Redo Test ' + Date.now();
+    await input.fill(taskText);
+    await input.press('Enter');
+
+    const todoItem = window.locator('.todo-item', { hasText: taskText });
+    const dueSpan = todoItem.locator('.due-date');
+
+    // Click to edit
+    await dueSpan.click();
+    const editInput = dueSpan.locator('input');
+    await expect(editInput).toBeVisible();
+
+    // Get current value
+    const originalText = await editInput.inputValue();
+    const originalParsed = new Date(originalText.replace(/\//g, '-')).getTime();
+    
+    // Change value (scroll wheel)
+    await editInput.dispatchEvent('wheel', { deltaY: -100 }); // Adjust +30 mins
+    const newText = await editInput.inputValue();
+    const newParsed = new Date(newText.replace(/\//g, '-')).getTime();
+    expect(newParsed).not.toBe(originalParsed);
+
+    // Save
+    await editInput.press('Enter');
+    await expect(editInput).not.toBeVisible();
+
+    const formatShort = (ms) => {
+      const d = new Date(ms);
+      const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+      const dd = d.getDate().toString().padStart(2, '0');
+      const hh = d.getHours().toString().padStart(2, '0');
+      const min = d.getMinutes().toString().padStart(2, '0');
+      return `${mm}/${dd} ${hh}:${min}`;
+    };
+
+    // Undo
+    await undoBtn.click();
+    await expect(dueSpan).toContainText(formatShort(originalParsed));
+
+    // Redo
+    await redoBtn.click();
+    await expect(dueSpan).toContainText(formatShort(newParsed));
+  });
+
   // ──────────────────────────────────────────────
   // 3. Tab / Dimension Switching
   // ──────────────────────────────────────────────

@@ -19,6 +19,7 @@
 - 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
 - 🛠️ **Advanced Management & Fast Inline Edits**:
   - Dedicated viewer with real-time search, and multi-column sorting.
+  - **Inline Fast Editing**: Edit task text, dimensions (Day/Week/Month), or due dates directly in the table.
   - **Zero-Click Date Picker**: Directly type, hit `ArrowUp`/`ArrowDown`, or scroll your mouse wheel to adjust due dates by 30 minutes. Blur to save instantly.
 - 🍅 **Enhanced Pomodoro**: 
   - Support custom full `MM:SS` precision editing.
@@ -26,7 +27,7 @@
   - Embedded audio clock triggers (tick-tock sequence and Ding completion).
 - 📥 **Smart Archive & Multi-History Undo**: 
   - **Auto-Archive**: Cleans up completed tasks gracefully over dimensions.
-  - **Reversible Workflows**: Undo both hard deletions and main-list restorations intuitively inside the archive suite.
+  - **Reversible Workflows (Undo/Redo)**: Comprehensive global Undo/Redo support for deletions, restorations, state toggles, and dimension changes across all views.
 - 🔗 **Clickable Resources**: URLs in task descriptions are automatically detected and clickable, opening directly in your default browser.
 - 🛡️ **Privacy Focused**: 100% local data storage. No servers, no tracking, complete privacy.
 - 🌐 **Real-time Sync**: Multi-language support (English / 繁體中文) with instant synchronization across all windows.
@@ -90,7 +91,7 @@ npm test
 - **Core**: Electron, Node.js
 - **Frontend**: HTML5, Vanilla CSS, JavaScript
 - **Voice Recognition**: Vosk-WASM (offline, WebAssembly-based)
-- **Testing**: Playwright (26 E2E tests)
+- **Validation**: Playwright (33 E2E automation cases)
 - **Bundling**: Electron Builder
 
 ---

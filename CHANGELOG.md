@@ -4,6 +4,13 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.5.0] - 2026-05-02
+- **Added**: Global **Redo** functionality integrated across all windows (Main, Task Manager, Archive).
+- **Added**: Comprehensive E2E test suite covering full Undo/Redo cycles.
+- **Improved**: Task Manager **Dimension** column is now editable via native-feeling "Stealth Select" dropdowns.
+- **Improved**: Dark-themed dropdown menus for seamless visual integration.
+- **Improved**: Enhanced localization with support for localized button tooltips and Redo actions.
+
 ### [1.4.2] - 2026-04-28
 - **Added**: Expanded dual Undo support covering state toggles and custom deadline adjustments.
 - **Fixed**: Resolved `Not allowed to load local resource` crashes by aligning renamed UI files (`taskmanager.*`) inside production build mappings.

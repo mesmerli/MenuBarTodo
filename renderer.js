@@ -3,11 +3,11 @@ const list = document.getElementById('todo-list');
 const tabBtns = document.querySelectorAll('.tab');
 const settingsBtn = document.getElementById('settings-btn');
 const mainUndoBtn = document.getElementById('main-undo-btn');
+const mainRedoBtn = document.getElementById('main-redo-btn');
 const pomoTimerDisplay = document.getElementById('pomo-timer');
 const pomoBtn = document.getElementById('pomo-btn');
 
 let todos = [];
-let deletedHistory = [];
 let currentDimension = 'day';
 
 // Pomodoro Logic (Main Process Sync)
@@ -237,47 +237,20 @@ if (settingsBtn) {
 
 if (mainUndoBtn) {
   mainUndoBtn.addEventListener('click', async () => {
-    if (deletedHistory.length > 0) {
-      const lastAction = deletedHistory.pop();
-      
-      if (Array.isArray(lastAction)) {
-        // Backward compatibility for pure archive arrays
-        todos = [...todos, ...lastAction];
-        if (window.api.removeFromArchive) {
-          window.api.removeFromArchive(lastAction);
-        }
-      } else if (lastAction.type === 'ARCHIVE') {
-        todos = [...todos, ...lastAction.items];
-        if (window.api.removeFromArchive) {
-          window.api.removeFromArchive(lastAction.items);
-        }
-      } else if (lastAction.type === 'TOGGLE') {
-        const idx = todos.findIndex(t => t.id === lastAction.id);
-        if (idx !== -1) {
-          todos[idx].completed = lastAction.wasCompleted;
-          if (todos[idx].completed) {
-            todos[idx].completedAt = Date.now();
-          } else {
-            delete todos[idx].completedAt;
-          }
-        }
-      } else if (lastAction.type === 'EDIT_DUEDATE') {
-        const idx = todos.findIndex(t => t.id === lastAction.id);
-        if (idx !== -1) {
-          if (lastAction.wasDueDate) {
-            todos[idx].dueDate = lastAction.wasDueDate;
-          } else {
-            delete todos[idx].dueDate;
-          }
-        }
-      }
-      
-      mainUndoBtn.disabled = deletedHistory.length === 0;
-      renderTodos();
-      await window.api.saveTodos(todos);
-    }
+    await window.api.performUndo();
   });
 }
+
+if (mainRedoBtn) {
+  mainRedoBtn.addEventListener('click', async () => {
+    await window.api.performRedo();
+  });
+}
+
+window.api.onUndoStateUpdated((state) => {
+  if (mainUndoBtn) mainUndoBtn.disabled = !state.canUndo;
+  if (mainRedoBtn) mainRedoBtn.disabled = !state.canRedo;
+});
 
 function isSameDay(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() &&
@@ -304,6 +277,9 @@ function isSameMonth(d1, d2) {
 
 async function init() {
   await window.i18n.init();
+  const state = await window.api.getUndoState();
+  if (mainUndoBtn) mainUndoBtn.disabled = !state.canUndo;
+  
   todos = await window.api.loadTodos();
   renderTodos();
   
@@ -479,10 +455,13 @@ function renderTodos() {
               if (wasDueDate !== newDate.getTime()) {
                 todos[index].dueDate = newDate.getTime();
                 
-                deletedHistory.push({ type: 'EDIT_DUEDATE', id: todo.id, wasDueDate: wasDueDate });
-                if (deletedHistory.length > 10) deletedHistory.shift();
-                if (mainUndoBtn) mainUndoBtn.disabled = false;
-
+                window.api.pushUndoAction({ 
+                  type: 'EDIT_DUEDATE', 
+                  id: todo.id, 
+                  wasDueDate: wasDueDate,
+                  newDueDate: newDate.getTime()
+                });
+                
                 await window.api.saveTodos(todos);
               }
             }
@@ -518,10 +497,6 @@ function renderTodos() {
     li.appendChild(deleteBtn);
     list.appendChild(li);
   });
-  
-  if (mainUndoBtn) {
-    mainUndoBtn.disabled = deletedHistory.length === 0;
-  }
 }
 
 async function handleNewTodo(text) {
@@ -690,10 +665,13 @@ async function toggleTodo(id) {
       delete todos[index].completedAt;
     }
     
-    deletedHistory.push({ type: 'TOGGLE', id: id, wasCompleted: wasCompleted });
-    if (deletedHistory.length > 10) deletedHistory.shift();
-    if (mainUndoBtn) mainUndoBtn.disabled = false;
-
+    window.api.pushUndoAction({ 
+      type: 'TOGGLE', 
+      id: id, 
+      wasCompleted: wasCompleted,
+      newCompleted: !wasCompleted
+    });
+    
     renderTodos();
     await window.api.saveTodos(todos);
   }
@@ -705,10 +683,8 @@ async function deleteTodo(id) {
     const deleted = todos.splice(index, 1)[0];
     
     // Archive and add to history
-    window.api.archiveTodos([deleted]);
-    deletedHistory.push({ type: 'ARCHIVE', items: [deleted] });
-    if (deletedHistory.length > 10) deletedHistory.shift();
-    if (mainUndoBtn) mainUndoBtn.disabled = false;
+    const fileIndex = await window.api.archiveTodos([deleted]);
+    window.api.pushUndoAction({ type: 'ARCHIVE', items: [deleted], fileIndex: fileIndex });
     
     renderTodos();
     await window.api.saveTodos(todos);

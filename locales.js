@@ -5,7 +5,8 @@ const translations = {
     'tab-month': 'Month',
     'input-placeholder': 'Type a task and press Enter...',
     'history-title': 'Task Management',
-    'btn-undo': 'Undo Delete',
+    'btn-undo': 'Undo',
+    'btn-redo': 'Redo',
     'btn-clear': 'Clear All Completed',
     'col-text': 'Task',
     'col-status': 'Status',
@@ -40,7 +41,8 @@ const translations = {
     'tab-month': '月',
     'input-placeholder': '輸入待辦事項，按下 Enter 建立...',
     'history-title': '任務管理',
-    'btn-undo': '復原刪除',
+    'btn-undo': '復原',
+    'btn-redo': '重做',
     'btn-clear': '清除所有已完成紀錄',
     'col-text': '任務內容',
     'col-status': '狀態',
@@ -97,11 +99,7 @@ window.i18n = {
       if (el.tagName.toLowerCase() === 'input' && el.type === 'text') {
         el.placeholder = this.t(key);
       } else {
-        // preserve existing icons or inner structures if necessary by replacing only text node
-        // but for this app, innerText is mostly fine, or we replace just the text node.
-        // If it's a table header with an arrow, we need to handle that carefully.
         if (el.tagName.toLowerCase() === 'th') {
-          // preserve sort arrows
           const arrowMatch = el.textContent.match(/[↑↓]/);
           const arrow = arrowMatch ? ` ${arrowMatch[0]}` : '';
           el.textContent = this.t(key) + arrow;
@@ -109,6 +107,10 @@ window.i18n = {
           el.textContent = this.t(key);
         }
       }
+    });
+
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      el.title = this.t(el.dataset.i18nTitle);
     });
   }
 };

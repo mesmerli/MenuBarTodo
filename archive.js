@@ -2,11 +2,11 @@
 const tbody = document.getElementById('archive-tbody');
 const searchInput = document.getElementById('search-input');
 const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 const sortHeaders = document.querySelectorAll('th[data-sort]');
 
 // Internal state for filtering, sorting, and managing data
 let archives = [];
-let archiveUndoHistory = [];
 let searchQuery = '';
 let currentFilter = 'all';
 let sortColumn = 'archiveAt';
@@ -57,6 +57,15 @@ async function init() {
     loadData();
   });
 
+  window.api.onUndoStateUpdated((state) => {
+    if (undoBtn) undoBtn.disabled = !state.canUndo;
+    if (redoBtn) redoBtn.disabled = !state.canRedo;
+  });
+
+  const undoState = await window.api.getUndoState();
+  if (undoBtn) undoBtn.disabled = !undoState.canUndo;
+  if (redoBtn) redoBtn.disabled = !undoState.canRedo;
+
   const tabs = document.querySelectorAll('.tab');
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -76,21 +85,13 @@ async function init() {
 
   if (undoBtn) {
     undoBtn.addEventListener('click', async () => {
-      if (archiveUndoHistory.length > 0) {
-        const lastAction = archiveUndoHistory.pop();
-        let success = false;
-        
-        if (lastAction.type === 'DELETE') {
-          success = await window.api.undoDeleteArchiveItem({ item: lastAction.item, fileIndex: lastAction.fileIndex });
-        } else if (lastAction.type === 'RESTORE') {
-          success = await window.api.undoRestoreArchiveItem({ item: lastAction.item, fileIndex: lastAction.fileIndex });
-        }
-        
-        if (success) {
-          undoBtn.disabled = archiveUndoHistory.length === 0;
-          await loadData();
-        }
-      }
+      await window.api.performUndo();
+    });
+  }
+
+  if (redoBtn) {
+    redoBtn.addEventListener('click', async () => {
+      await window.api.performRedo();
     });
   }
 
@@ -213,9 +214,7 @@ function renderTable() {
     restoreBtn.addEventListener('click', async () => {
       const success = await window.api.restoreArchiveItem(item, item._fileIndex);
       if (success) {
-        archiveUndoHistory.push({ type: 'RESTORE', item: { ...item }, fileIndex: item._fileIndex });
-        if (archiveUndoHistory.length > 100) archiveUndoHistory.shift();
-        undoBtn.disabled = false;
+        window.api.pushUndoAction({ type: 'RESTORE', items: [item], fileIndex: item._fileIndex });
         await loadData();
       }
     });
@@ -234,9 +233,7 @@ function renderTable() {
     deleteBtn.addEventListener('click', async () => {
       const success = await window.api.deleteArchiveItem(item.id, item._fileIndex);
       if (success) {
-        archiveUndoHistory.push({ type: 'DELETE', item: { ...item }, fileIndex: item._fileIndex });
-        if (archiveUndoHistory.length > 100) archiveUndoHistory.shift();
-        undoBtn.disabled = false;
+        window.api.pushUndoAction({ type: 'DELETE_PERM', item: { ...item }, fileIndex: item._fileIndex });
         await loadData();
       }
     });

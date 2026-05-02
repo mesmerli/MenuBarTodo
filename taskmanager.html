@@ -36,10 +36,16 @@
             <path d="M10 14h4"></path>
           </svg>
         </button>
-        <button id="undo-btn" class="icon-action-btn" disabled title="復原刪除 / Undo Delete" style="padding: 4px 10px; display: flex; align-items: center;">
+        <button id="undo-btn" class="icon-action-btn" disabled data-i18n-title="btn-undo" style="padding: 4px 10px; display: flex; align-items: center;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 7v6h6"></path>
             <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"></path>
+          </svg>
+        </button>
+        <button id="redo-btn" class="icon-action-btn" disabled data-i18n-title="btn-redo" style="padding: 4px 10px; display: flex; align-items: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"></path>
           </svg>
         </button>
         <button id="clear-all-btn" class="danger-btn" data-i18n="btn-clear" style="padding: 6px 12px;">清除所有已完成紀錄</button>

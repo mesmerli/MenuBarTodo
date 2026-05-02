@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('api', {
   onWindowShow: (callback) => ipcRenderer.on('window-show', () => callback()),
   openTaskManagerWindow: () => ipcRenderer.send('open-taskmanager-window'),
   onTodosUpdated: (callback) => ipcRenderer.on('todos-updated', () => callback()),
-  archiveTodos: (todos) => ipcRenderer.send('archive-todos', todos),
+  archiveTodos: (todos) => ipcRenderer.invoke('archive-todos', todos),
   loadConfig: () => ipcRenderer.invoke('load-config'),
   saveConfig: (config) => ipcRenderer.invoke('save-config', config),
   onLanguageChanged: (callback) => ipcRenderer.on('language-changed', (event, lang) => callback(lang)),
@@ -16,16 +16,20 @@ contextBridge.exposeInMainWorld('api', {
   loadArchives: () => ipcRenderer.invoke('load-archives'),
   deleteArchiveItem: (id, fileIndex) => ipcRenderer.invoke('delete-archive-item', { id, fileIndex }),
   restoreArchiveItem: (item, fileIndex) => ipcRenderer.invoke('restore-archive-item', { item, fileIndex }),
-  undoDeleteArchiveItem: (data) => ipcRenderer.invoke('undo-delete-archive-item', data),
-  undoRestoreArchiveItem: (data) => ipcRenderer.invoke('undo-restore-archive-item', data),
   onArchivesUpdated: (callback) => ipcRenderer.on('archives-updated', () => callback()),
   openUrl: (url) => ipcRenderer.send('open-url', url),
-  removeFromArchive: (todos) => ipcRenderer.send('remove-from-archive', todos),
   requestShowWindow: () => ipcRenderer.send('request-show-window'),
   pomoToggle: () => ipcRenderer.send('pomo-toggle'),
   pomoSetDuration: (mins) => ipcRenderer.send('pomo-set-duration', mins),
   pomoGetState: () => ipcRenderer.send('pomo-get-state'),
   onPomoTick: (callback) => ipcRenderer.on('pomo-tick', (event, state) => callback(state)),
   getVersion: () => ipcRenderer.invoke('get-version'),
-  setWidgetMode: (enabled) => ipcRenderer.send('set-widget-mode', enabled)
+  setWidgetMode: (enabled) => ipcRenderer.send('set-widget-mode', enabled),
+  
+  // Global Undo System
+  pushUndoAction: (action) => ipcRenderer.send('push-undo-action', action),
+  performUndo: () => ipcRenderer.invoke('perform-undo'),
+  performRedo: () => ipcRenderer.invoke('perform-redo'),
+  getUndoState: () => ipcRenderer.invoke('get-undo-state'),
+  onUndoStateUpdated: (callback) => ipcRenderer.on('undo-state-updated', (event, state) => callback(state))
 });

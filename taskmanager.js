@@ -3,6 +3,7 @@ const tbody = document.getElementById('history-tbody');
 const filterBtns = document.querySelectorAll('.filters .tab');
 const clearAllBtn = document.getElementById('clear-all-btn');
 const undoBtn = document.getElementById('undo-btn');
+const redoBtn = document.getElementById('redo-btn');
 const langBtn = document.getElementById('lang-btn');
 const searchInput = document.getElementById('search-input');
 const todoInput = document.getElementById('todo-input');
@@ -14,7 +15,6 @@ let currentFilter = 'all';
 let searchQuery = '';
 let sortColumn = 'createdAt';
 let sortAsc = false;
-let archiveHistory = []; // Stack of recently archived tasks for quick Undo retrieval
 let isSaving = false;
 
 /**
@@ -57,6 +57,15 @@ async function init() {
       await loadData();
     }
   });
+
+  window.api.onUndoStateUpdated((state) => {
+    if (undoBtn) undoBtn.disabled = !state.canUndo;
+    if (redoBtn) redoBtn.disabled = !state.canRedo;
+  });
+
+  const undoState = await window.api.getUndoState();
+  if (undoBtn) undoBtn.disabled = !undoState.canUndo;
+  if (redoBtn) redoBtn.disabled = !undoState.canRedo;
 
   const autoLaunchCheckbox = document.getElementById('auto-launch-checkbox');
   if (autoLaunchCheckbox) {
@@ -268,10 +277,8 @@ async function init() {
   clearAllBtn.addEventListener('click', async () => {
     const completedTodos = todos.filter(t => t.completed);
     if (completedTodos.length > 0) {
-      window.api.archiveTodos(completedTodos);
-      archiveHistory.push({ type: 'ARCHIVE', items: completedTodos });
-      if (archiveHistory.length > 100) archiveHistory.shift();
-      undoBtn.disabled = false;
+      const fileIndex = await window.api.archiveTodos(completedTodos);
+      window.api.pushUndoAction({ type: 'ARCHIVE', items: completedTodos, fileIndex: fileIndex });
       
       todos = todos.filter(t => !t.completed);
       isSaving = true;
@@ -282,43 +289,14 @@ async function init() {
   });
 
   undoBtn.addEventListener('click', async () => {
-    if (archiveHistory.length > 0) {
-      const lastAction = archiveHistory.pop();
-      
-      if (Array.isArray(lastAction)) {
-        window.api.removeFromArchive(lastAction);
-        todos = [...todos, ...lastAction];
-      } else if (lastAction.type === 'ARCHIVE') {
-        window.api.removeFromArchive(lastAction.items);
-        todos = [...todos, ...lastAction.items];
-      } else if (lastAction.type === 'TOGGLE') {
-        const idx = todos.findIndex(t => t.id === lastAction.id);
-        if (idx !== -1) {
-          todos[idx].completed = lastAction.wasCompleted;
-          if (todos[idx].completed) {
-            todos[idx].completedAt = Date.now();
-          } else {
-            delete todos[idx].completedAt;
-          }
-        }
-      } else if (lastAction.type === 'EDIT_DUEDATE') {
-        const idx = todos.findIndex(t => t.id === lastAction.id);
-        if (idx !== -1) {
-          if (lastAction.wasDueDate) {
-            todos[idx].dueDate = lastAction.wasDueDate;
-          } else {
-            delete todos[idx].dueDate;
-          }
-        }
-      }
-      
-      undoBtn.disabled = archiveHistory.length === 0;
-      isSaving = true;
-      await window.api.saveTodos(todos);
-      isSaving = false;
-      renderTable();
-    }
+    await window.api.performUndo();
   });
+
+  if (redoBtn) {
+    redoBtn.addEventListener('click', async () => {
+      await window.api.performRedo();
+    });
+  }
 
   const archiveBtn = document.getElementById('archive-btn');
   if (archiveBtn) {
@@ -446,9 +424,12 @@ function renderTable() {
           delete todos[idx].completedAt;
         }
         
-        archiveHistory.push({ type: 'TOGGLE', id: todo.id, wasCompleted: wasCompleted });
-        if (archiveHistory.length > 100) archiveHistory.shift();
-        undoBtn.disabled = false;
+        window.api.pushUndoAction({ 
+          type: 'TOGGLE', 
+          id: todo.id, 
+          wasCompleted: wasCompleted,
+          newCompleted: !wasCompleted
+        });
 
         isSaving = true;
         await window.api.saveTodos(todos);
@@ -470,10 +451,8 @@ function renderTable() {
       </svg>
     `;
     archiveBtn.addEventListener('click', async () => {
-      window.api.archiveTodos([todo]);
-      archiveHistory.push({ type: 'ARCHIVE', items: [todo] });
-      if (archiveHistory.length > 100) archiveHistory.shift();
-      undoBtn.disabled = false;
+      const fileIndex = await window.api.archiveTodos([todo]);
+      window.api.pushUndoAction({ type: 'ARCHIVE', items: [todo], fileIndex: fileIndex });
       
       todos = todos.filter(t => t.id !== todo.id);
       isSaving = true;
@@ -489,12 +468,48 @@ function renderTable() {
     tr.innerHTML = `
       <td class="status-cell"></td>
       <td class="text-cell"></td>
-      <td>${getDimensionLabel(todo.dimension || 'day')}</td>
+      <td class="dim-cell" style="cursor: pointer;">${getDimensionLabel(todo.dimension || 'day')}</td>
       <td class="due-cell ${isOverdue ? 'overdue' : ''}" style="cursor: pointer; ${isOverdue ? 'color: var(--danger); font-weight: bold;' : ''}">
         ${dueStr}${isOverdue ? ' !' : ''}
       </td>
       <td class="action-cell"></td>
     `;
+
+    const dimCell = tr.querySelector('.dim-cell');
+    const select = document.createElement('select');
+    select.className = 'dim-select';
+    
+    ['day', 'week', 'month'].forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = getDimensionLabel(d);
+      opt.selected = (todo.dimension || 'day') === d;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener('change', async () => {
+      const newDim = select.value;
+      if (newDim !== (todo.dimension || 'day')) {
+        const idx = todos.findIndex(t => t.id === todo.id);
+        if (idx !== -1) {
+          const oldDim = todos[idx].dimension || 'day';
+          todos[idx].dimension = newDim;
+          window.api.pushUndoAction({ 
+            type: 'EDIT_DIMENSION', 
+            id: todo.id, 
+            wasDimension: oldDim, 
+            newDimension: newDim 
+          });
+          isSaving = true;
+          await window.api.saveTodos(todos);
+          isSaving = false;
+        }
+      }
+      renderTable();
+    });
+
+    dimCell.innerHTML = '';
+    dimCell.appendChild(select);
 
     const dueCell = tr.querySelector('.due-cell');
     dueCell.addEventListener('click', (e) => {
@@ -561,9 +576,12 @@ function renderTable() {
               if (wasDueDate !== newDate.getTime()) {
                 todos[idx].dueDate = newDate.getTime();
                 
-                archiveHistory.push({ type: 'EDIT_DUEDATE', id: todo.id, wasDueDate: wasDueDate });
-                if (archiveHistory.length > 100) archiveHistory.shift();
-                undoBtn.disabled = false;
+                window.api.pushUndoAction({ 
+                  type: 'EDIT_DUEDATE', 
+                  id: todo.id, 
+                  wasDueDate: wasDueDate,
+                  newDueDate: newDate.getTime()
+                });
 
                 isSaving = true;
                 await window.api.saveTodos(todos);

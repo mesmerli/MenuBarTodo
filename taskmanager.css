@@ -225,6 +225,37 @@ th {
   margin: 0;
 }
 
+.dim-select {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.dim-select:hover {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dim-select:focus {
+  border-color: var(--accent);
+  background: #232328;
+  appearance: auto;
+}
+
+.dim-select option {
+  background-color: #232328;
+  color: var(--text-primary);
+}
+
 .todo-checkbox {
   appearance: none;
   width: 18px;

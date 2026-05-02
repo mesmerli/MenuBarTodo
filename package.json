@@ -1,6 +1,6 @@
 {
   "name": "menubar-todo",
-  "version": "1.4.2-build.000012",
+  "version": "1.5.0-build.000013",
   "description": "A minimal menubar todo app",
   "main": "main.js",
   "scripts": {
