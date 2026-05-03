@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Tray, globalShortcut, ipcMain, nativeImage, screen, Menu, dialog, shell, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const APP_CONSTANTS = require('./constants.js');
 
 app.setAppUserModelId('com.mesmerli.menubartodo');
 
@@ -66,11 +67,12 @@ if (!gotTheLock) {
   logToFile(`UserData Path: ${app.getPath('userData')}`);
   logToFile(`Debug Log Path: ${debugLogPath}`);
 
-  let pomoDuration = 30;
+  let pomoDuration = APP_CONSTANTS.DEFAULT_POMO_DURATION;
   let pomoTime = pomoDuration * 60;
   let pomoConfiguredSeconds = pomoDuration * 60;
   let pomoRunning = false;
   let pomoInterval = null;
+  let pomoAutoResetTimer = null;
 
   function broadcastPomoState() {
     if (win && !win.isDestroyed()) {
@@ -80,6 +82,8 @@ if (!gotTheLock) {
 
   function startPomo() {
     if (pomoInterval) clearInterval(pomoInterval);
+    if (pomoAutoResetTimer) clearTimeout(pomoAutoResetTimer);
+    pomoAutoResetTimer = null;
     pomoRunning = true;
     pomoInterval = setInterval(() => {
       if (pomoTime > 0) {
@@ -99,6 +103,19 @@ if (!gotTheLock) {
     pomoRunning = false;
     if (pomoInterval) clearInterval(pomoInterval);
     pomoInterval = null;
+    
+    // Auto-reset logic: if reached zero, set a 5-minute timer to reset to original duration
+    if (pomoTime === 0) {
+      if (pomoAutoResetTimer) clearTimeout(pomoAutoResetTimer);
+      pomoAutoResetTimer = setTimeout(() => {
+        if (!pomoRunning && pomoTime === 0) {
+          pomoTime = pomoConfiguredSeconds;
+          broadcastPomoState();
+        }
+        pomoAutoResetTimer = null;
+      }, APP_CONSTANTS.AUTO_RESET_POMO_MS);
+    }
+    
     broadcastPomoState();
   }
 
@@ -106,6 +123,8 @@ if (!gotTheLock) {
     if (pomoRunning) {
       stopPomo();
     } else {
+      if (pomoAutoResetTimer) clearTimeout(pomoAutoResetTimer);
+      pomoAutoResetTimer = null;
       if (pomoTime === 0) {
         pomoTime = pomoConfiguredSeconds;
       }
@@ -114,6 +133,9 @@ if (!gotTheLock) {
   });
 
   ipcMain.on('pomo-set-duration', (event, totalSeconds) => {
+    if (pomoAutoResetTimer) clearTimeout(pomoAutoResetTimer);
+    pomoAutoResetTimer = null;
+    
     pomoDuration = Math.floor(totalSeconds / 60);
     pomoConfiguredSeconds = totalSeconds;
     pomoTime = totalSeconds;
@@ -139,13 +161,13 @@ if (!gotTheLock) {
     return app.getVersion();
   });
 
-  let currentLang = 'zh-TW';
+  let currentLang = APP_CONSTANTS.DEFAULT_LANG;
   let isWidgetMode = false;
   try {
     if (fs.existsSync(configPath)) {
       const data = fs.readFileSync(configPath, 'utf8');
       const parsed = JSON.parse(data);
-      currentLang = parsed.lang || 'zh-TW';
+      currentLang = parsed.lang || APP_CONSTANTS.DEFAULT_LANG;
       isWidgetMode = !!parsed.widgetMode;
       if (parsed.pomoConfiguredSeconds !== undefined) {
         pomoConfiguredSeconds = parsed.pomoConfiguredSeconds;
@@ -171,8 +193,8 @@ if (!gotTheLock) {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 360,
-    height: 450,
+    width: APP_CONSTANTS.MAIN_WIDTH,
+    height: APP_CONSTANTS.MAIN_HEIGHT,
     show: isWidgetMode,
     frame: false,
     fullscreenable: false,
@@ -380,8 +402,8 @@ function updateTrayMenu() {
         return;
       }
       aboutWin = new BrowserWindow({
-        width: 300,
-        height: 380,
+        width: APP_CONSTANTS.ABOUT_WIDTH,
+        height: APP_CONSTANTS.ABOUT_HEIGHT,
         resizable: false,
         minimizable: false,
         maximizable: false,
@@ -429,8 +451,8 @@ app.on('will-quit', () => {
     }
     
     taskManagerWin = new BrowserWindow({
-      width: 900,
-      height: 600,
+      width: APP_CONSTANTS.TASK_MANAGER_WIDTH,
+      height: APP_CONSTANTS.TASK_MANAGER_HEIGHT,
       backgroundColor: '#19191c',
       autoHideMenuBar: true,
       icon: path.join(__dirname, 'icon.png'),
@@ -456,8 +478,8 @@ ipcMain.on('open-archive-window', () => {
   }
   
   archiveWin = new BrowserWindow({
-    width: 900,
-    height: 600,
+    width: APP_CONSTANTS.ARCHIVE_WIDTH,
+    height: APP_CONSTANTS.ARCHIVE_HEIGHT,
     backgroundColor: '#19191c',
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'icon.png'),
@@ -481,11 +503,12 @@ function archiveTodosInternal(todosToArchive) {
     const userDataPath = app.getPath('userData');
     const MAX_FILES = 5;
     const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-
-    let config = { lang: 'zh-TW', archiveIndex: 1 };
+ 
+    let config = { lang: APP_CONSTANTS.DEFAULT_LANG, archiveIndex: 1 };
     if (fs.existsSync(configPath)) {
       config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
+    if (!config.lang) config.lang = APP_CONSTANTS.DEFAULT_LANG;
     if (!config.archiveIndex) config.archiveIndex = 1;
 
     let currentIndex = config.archiveIndex;
@@ -561,7 +584,7 @@ function autoArchiveTodos(todos) {
 }
 ipcMain.on('push-undo-action', (event, action) => {
   globalUndoStack.push(action);
-  if (globalUndoStack.length > 100) globalUndoStack.shift();
+  if (globalUndoStack.length > APP_CONSTANTS.MAX_UNDO_STACK) globalUndoStack.shift();
   globalRedoStack = []; // Clear redo on new action
   broadcastUndoState();
 });
@@ -827,10 +850,10 @@ ipcMain.handle('load-config', () => {
       const data = fs.readFileSync(configPath, 'utf8');
       return JSON.parse(data);
     }
-    return { lang: 'zh-TW' };
+    return { lang: APP_CONSTANTS.DEFAULT_LANG };
   } catch (error) {
     console.error('Failed to load config:', error);
-    return { lang: 'zh-TW' };
+    return { lang: APP_CONSTANTS.DEFAULT_LANG };
   }
 });
 

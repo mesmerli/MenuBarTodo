@@ -5,24 +5,31 @@
 
 **MenuBar Todo** is a minimalist, high-performance task management application designed for developers and professionals who value efficiency. It lives in your Windows system tray, allowing you to capture ideas and tasks instantly without breaking your flow.
 
-![MenuBar Todo 主畫面截圖](assets/screenshot.png)
+<a href="https://apps.microsoft.com/detail/9P9T972HKHZX?hl=zh-tw&gl=TW&ocid=pdpshare">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" height="80" alt="Get it from Microsoft" />
+</a>
+
+![MenuBar Todo Screenshot](assets/screenshot.png)
 
 ---
 
 ## ✨ Key Features
 
 - 🚀 **Instant Access**: Toggle the window instantly with the global shortcut `Ctrl + Shift + Space`.
-- 🎙️ **Offline Voice Input**: Fully offline speech recognition powered by **Vosk-WASM** — no cloud services, no API keys, complete privacy.
-- 📅 **Multi-dimensional View & Smart Expiry**: 
-  - Organize and view tasks across **Day, Week, and Month** dimensions.
-  - **Smart Deadlines**: Automatically ceil future due dates (+4 hours for Day, +7 days for Week, +30 days for Month) to clean half-hour checkpoints.
-- 🎨 **Modern Aesthetics**: Neon-dark aesthetic with glassmorphism effects and smooth micro-animations.
+- 🎙️ **Smart Voice Input**: 
+  - Fully offline speech recognition powered by **Vosk-WASM**.
+  - **Real-time Conversion**: Automatically converts simplified Chinese to **Traditional Chinese** (Taiwan standard) using OpenCC-JS.
+- 📅 **Intuitive Dimension Buckets**: 
+  - Organize tasks into **Today, Incoming, and Future** buckets.
+  - **Smart Deadlines**: Automatically ceil future due dates (+4 hours for Today, +7 days for Incoming, +30 days for Future) to clean half-hour checkpoints.
+- 🎨 **Premium Aesthetics**: 420px wide modern neon-dark UI with glassmorphism effects and redesigned 3D drawer icons.
 - 🛠️ **Advanced Management & Fast Inline Edits**:
   - Dedicated viewer with real-time search, and multi-column sorting.
-  - **Inline Fast Editing**: Edit task text, dimensions (Day/Week/Month), or due dates directly in the table.
+  - **Inline Fast Editing**: Edit task text, dimensions (Today/Incoming/Future), or due dates directly in the table.
   - **Zero-Click Date Picker**: Directly type, hit `ArrowUp`/`ArrowDown`, or scroll your mouse wheel to adjust due dates by 30 minutes. Blur to save instantly.
 - 🍅 **Enhanced Pomodoro**: 
   - Support custom full `MM:SS` precision editing.
+  - **Auto-Reset**: Automatically reverts to 25:00 if idle for 5 minutes after completion.
   - Scroll or tap arrow shortcuts to quickly iterate time slices.
   - Embedded audio clock triggers (tick-tock sequence and Ding completion).
 - 📥 **Smart Archive & Multi-History Undo**: 
@@ -30,7 +37,7 @@
   - **Reversible Workflows (Undo/Redo)**: Comprehensive global Undo/Redo support for deletions, restorations, state toggles, and dimension changes across all views.
 - 🔗 **Clickable Resources**: URLs in task descriptions are automatically detected and clickable, opening directly in your default browser.
 - 🛡️ **Privacy Focused**: 100% local data storage. No servers, no tracking, complete privacy.
-- 🌐 **Real-time Sync**: Multi-language support (English / 繁體中文) with instant synchronization across all windows.
+- 🌐 **Real-time Sync**: Multi-language support (English / Traditional Chinese) with instant synchronization across all windows.
 
 ---
 

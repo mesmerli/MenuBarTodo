@@ -443,11 +443,12 @@ function renderTable() {
     const archiveBtn = document.createElement('button');
     archiveBtn.className = 'delete-icon-btn';
     archiveBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="21 8 21 21 3 21 3 8"></polyline>
-        <rect x="1" y="3" width="22" height="5"></rect>
-        <polyline points="10 12 12 14 14 12"></polyline>
-        <line x1="12" y1="8" x2="12" y2="14"></line>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 14h18l2-7H5l-2 7Z"></path>
+        <rect x="3" y="14" width="18" height="8" rx="1"></rect>
+        <path d="M10 18h4"></path>
+        <path d="M2 2c4 0 8 2 11 8"></path>
+        <polyline points="9 10 13 10 13 6"></polyline>
       </svg>
     `;
     archiveBtn.addEventListener('click', async () => {

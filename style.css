@@ -40,7 +40,7 @@ button, input, .tab, .todo-item, .pomodoro-container, #pomo-timer {
 .tabs {
   display: flex;
   padding: 12px 12px 0;
-  gap: 10px;
+  gap: 6px;
   border-bottom: 1px solid var(--glass-border);
 }
 
@@ -71,7 +71,6 @@ button, input, .tab, .todo-item, .pomodoro-container, #pomo-timer {
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
-  margin-left: auto;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;

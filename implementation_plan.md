@@ -90,6 +90,26 @@
 - [x] **Extended Action Buffers**:
   - Enhanced undo logic on completion triggers and due date modifications.
 
+### v1.5.0 — Global Redo & Testing
+- [x] **Redo Functionality**:
+  - Implemented comprehensive global Redo support across all windows.
+- [x] **E2E Stability**:
+  - Reached 33 passing E2E tests covering full state cycles.
+- [x] **Stealth Select**:
+  - Replaced native selects with dark-themed, sleek dimension dropdowns in Task Manager.
+
+### v1.6.0 — Smart Voice & Refined UX
+- [x] **Chinese Voice Conversion**:
+  - Integrated `opencc-js` for real-time Simplified to Traditional Chinese (Taiwan) conversion.
+- [x] **Pomodoro Auto-Reset**:
+  - Timer now automatically resets to 25:00 after 5 minutes of inactivity at zero.
+- [x] **Architecture Centralization**:
+  - Established `constants.js` as the single source of truth for all configurations (Window size, defaults, etc.).
+- [x] **UI & Icon Redesign**:
+  - Redesigned Archive/Restore icons into "3D Wide Drawers" for better affordance.
+  - Renamed dimensions to **Today, Incoming, and Future**.
+  - Expanded main window width to 420px for better readability.
+
 ## Proposed Future Changes
 
 ### Enhanced Search

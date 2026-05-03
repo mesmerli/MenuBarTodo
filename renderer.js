@@ -10,13 +10,22 @@ const pomoBtn = document.getElementById('pomo-btn');
 let todos = [];
 let currentDimension = 'day';
 
+// Offline Voice Recognition via Vosk-WASM
+const voiceBtn = document.getElementById('voice-btn');
+let model = null;
+let recognizer = null;
+let audioContext = null;
+let source = null;
+let processor = null;
+let s2tConverter = null;
+
 // Pomodoro Logic (Main Process Sync)
-let pomoDuration = 30; 
+let pomoDuration = window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25; 
 let pomoTime = pomoDuration * 60;
 let pomoRunning = false;
 let hasPlayedDing = false;
 
-let pomoConfiguredSeconds = 30 * 60;
+let pomoConfiguredSeconds = (window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25) * 60;
 
 function playTickSound() {
   try {
@@ -143,7 +152,7 @@ if (pomoTimerDisplay) {
     
     const savePomo = () => {
       const parts = input.value.trim().split(':');
-      let mins = 30;
+      let mins = window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25;
       let secs = 0;
       
       if (parts.length >= 1) {
@@ -295,6 +304,12 @@ async function init() {
   window.api.onLanguageChanged((lang) => {
     window.i18n.lang = lang;
     window.i18n.applyTranslations();
+    
+    // Reset Vosk model/recognizer so they reload with the new language on next start
+    if (voiceBtn && voiceBtn.classList.contains('listening')) stopVosk();
+    model = null;
+    recognizer = null;
+    s2tConverter = null;
   });
   
   window.addEventListener('focus', () => {
@@ -366,17 +381,18 @@ function renderTodos() {
       textSpan.appendChild(input);
       input.focus();
       const len = input.value.length;
-      input.setSelectionRange(len, len);
+        input.setSelectionRange(len, len);
     });
     
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="21 8 21 21 3 21 3 8"></polyline>
-        <rect x="1" y="3" width="22" height="5"></rect>
-        <polyline points="10 12 12 14 14 12"></polyline>
-        <line x1="12" y1="8" x2="12" y2="14"></line>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 14h18l2-7H5l-2 7Z"></path>
+        <rect x="3" y="14" width="18" height="8" rx="1"></rect>
+        <path d="M10 18h4"></path>
+        <path d="M2 2c4 0 8 2 11 8"></path>
+        <polyline points="9 10 13 10 13 6"></polyline>
       </svg>
     `;
     deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
@@ -540,13 +556,6 @@ input.addEventListener('keydown', async (e) => {
 });
 
 // Offline Voice Recognition via Vosk-WASM
-const voiceBtn = document.getElementById('voice-btn');
-let model = null;
-let recognizer = null;
-let audioContext = null;
-let source = null;
-let processor = null;
-
 /**
  * Starts audio recording and feeds raw PCM streams into the Vosk engine
  */
@@ -571,14 +580,24 @@ async function startVosk() {
       recognizer.on("result", (message) => {
         const result = message.result;
         if (result.text) {
-          input.value = result.text;
+          let text = result.text;
+          
+          // Convert Simplified Chinese to Traditional Chinese if in zh-TW mode
+          if (window.i18n.lang === 'zh-TW' && typeof OpenCC !== 'undefined') {
+            if (!s2tConverter) {
+              s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+            }
+            text = s2tConverter(text);
+          }
+          
+          input.value = text;
           // Auto-commit transcribed text into Todo item after a brief pause
           setTimeout(async () => {
-            const text = input.value.trim();
-            if (text) {
+            const finalText = input.value.trim();
+            if (finalText) {
               input.value = '';
               stopVosk(); // Release microphone hardware
-              await handleNewTodo(text);
+              await handleNewTodo(finalText);
             }
           }, 800);
         }
@@ -588,7 +607,14 @@ async function startVosk() {
       recognizer.on("partialresult", (message) => {
         const partial = message.result.partial;
         if (partial) {
-          input.value = partial;
+          let text = partial;
+          if (window.i18n.lang === 'zh-TW' && typeof OpenCC !== 'undefined') {
+            if (!s2tConverter) {
+              s2tConverter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+            }
+            text = s2tConverter(text);
+          }
+          input.value = text;
         }
       });
     }

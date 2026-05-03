@@ -4,6 +4,15 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.6.0] - 2026-05-03
+- **Added**: Integrated **OpenCC-JS** for real-time simplified to traditional Chinese (Taiwan) conversion in voice input.
+- **Added**: Pomodoro **Auto-Reset** feature that reverts to default duration after 5 minutes of inactivity at zero.
+- **Improved**: Centralized application constants (`constants.js`) to eliminate redundancy between Main and Renderer processes.
+- **Improved**: Redesigned **Archive/Restore icons** with 3D perspective drawers and bold directional arrows.
+- **Improved**: Renamed task dimensions to **Today**, **Incoming**, and **Future** for better workflow clarity.
+- **Fixed**: Expanded main window width to 420px to prevent UI element overflow with longer labels.
+
+
 ### [1.5.0] - 2026-05-02
 - **Added**: Global **Redo** functionality integrated across all windows (Main, Task Manager, Archive).
 - **Added**: Comprehensive E2E test suite covering full Undo/Redo cycles.
