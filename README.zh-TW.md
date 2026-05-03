@@ -6,7 +6,7 @@
 **MenuBar Todo** 是一款為重視效率的開發者與專業人士設計的極簡、高效任務管理應用程式。它常駐於您的 Windows 系統匣，讓您能即時捕捉靈感與任務，絕不打斷您的工作流程。
 
 <a href="https://apps.microsoft.com/detail/9P9T972HKHZX?hl=zh-tw&gl=TW&ocid=pdpshare">
-  <img src="https://get.microsoft.com/images/en-us%20dark.svg" height="160" alt="Get it from Microsoft" />
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" width="300" alt="Get it from Microsoft" />
 </a>
 
 ![MenuBar Todo 主畫面截圖](assets/screenshot.png)
