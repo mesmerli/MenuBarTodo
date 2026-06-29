@@ -295,12 +295,12 @@ fn create_web_window(app_handle: &tauri::AppHandle, label: &str, title: &str, ur
 }
 
 #[tauri::command]
-fn open_taskmanager_window(app_handle: tauri::AppHandle) {
+async fn open_taskmanager_window(app_handle: tauri::AppHandle) {
     create_web_window(&app_handle, "taskmanager", "Task Manager", "taskmanager.html", 800.0, 600.0);
 }
 
 #[tauri::command]
-fn open_archive_window(app_handle: tauri::AppHandle) {
+async fn open_archive_window(app_handle: tauri::AppHandle) {
     create_web_window(&app_handle, "archive", "Archive", "archive.html", 800.0, 600.0);
 }
 
@@ -1112,8 +1112,11 @@ pub fn run() {
             }
             
             // Build the tray icon
+            let icon_bytes = include_bytes!("../icons/32x32.png");
+            let tray_icon = tauri::image::Image::from_bytes(icon_bytes).expect("Failed to load tray icon");
+
             let _tray = TrayIconBuilder::with_id("main")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_icon)
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { button, rect, .. } = event {
