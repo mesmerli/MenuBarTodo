@@ -13,6 +13,8 @@ struct AppState {
     pomo_configured_seconds: Arc<Mutex<u32>>,
     undo_stack: Arc<Mutex<Vec<Value>>>,
     redo_stack: Arc<Mutex<Vec<Value>>>,
+    last_show_time: Arc<Mutex<Option<std::time::Instant>>>,
+    widget_mode: Arc<Mutex<bool>>,
 }
 
 fn get_user_data_dir() -> PathBuf {
@@ -281,7 +283,7 @@ fn create_web_window(app_handle: &tauri::AppHandle, label: &str, title: &str, ur
         let _ = window.show();
         let _ = window.set_focus();
     } else {
-        let _ = WebviewWindowBuilder::new(
+        if let Ok(new_win) = WebviewWindowBuilder::new(
             app_handle,
             label,
             WebviewUrl::App(std::path::PathBuf::from(url))
@@ -290,7 +292,23 @@ fn create_web_window(app_handle: &tauri::AppHandle, label: &str, title: &str, ur
         .inner_size(width, height)
         .resizable(false)
         .fullscreen(false)
-        .build();
+        .build() {
+            let app_handle_clone = app_handle.clone();
+            new_win.on_window_event(move |event| {
+                if let tauri::WindowEvent::Focused(true) = event {
+                    if let Some(main_win) = app_handle_clone.get_webview_window("main") {
+                        if !main_win.is_visible().unwrap_or(false) {
+                            if let Some(state) = main_win.try_state::<AppState>() {
+                                *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+                            }
+                            let _ = main_win.show();
+                            let _ = main_win.set_focus();
+                            let _ = main_win.emit("window-show", ());
+                        }
+                    }
+                }
+            });
+        }
     }
 }
 
@@ -308,47 +326,65 @@ fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
     } else {
-        let (tray_x, tray_y) = match rect.position {
-            tauri::Position::Physical(p) => (p.x, p.y),
-            tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
+        if let Some(state) = window.try_state::<AppState>() {
+            *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+        }
+        
+        let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+            *state.widget_mode.lock().unwrap()
+        } else {
+            false
         };
-        let (tray_w, tray_h) = match rect.size {
-            tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
-            tauri::Size::Logical(s) => (s.width as i32, s.height as i32),
-        };
         
-        let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 600));
-        let win_w = win_size.width as i32;
-        let win_h = win_size.height as i32;
-        
-        let mut x = tray_x + (tray_w / 2) - (win_w / 2);
-        let y;
-        
-        if let Some(monitor) = window.current_monitor().ok().flatten() {
-            let monitor_size = monitor.size();
-            let monitor_h = monitor_size.height as i32;
-            let monitor_w = monitor_size.width as i32;
+        if widget_mode {
+            // Standard Window Mode (Desktop Widget Mode) - Wake up and do not change position
+            let _ = window.show();
+            let _ = window.set_focus();
+            let _ = window.emit("window-show", ());
+        } else {
+            // Not Standard Window Mode (Tray Popup Mode) - Position on top of the tray
+            let (tray_x, tray_y) = match rect.position {
+                tauri::Position::Physical(p) => (p.x, p.y),
+                tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
+            };
+            let (tray_w, tray_h) = match rect.size {
+                tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
+                tauri::Size::Logical(s) => (s.width as i32, s.height as i32),
+            };
             
-            if tray_y > monitor_h / 2 {
-                y = tray_y - win_h - 10;
+            let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 600));
+            let win_w = win_size.width as i32;
+            let win_h = win_size.height as i32;
+            
+            let mut x = tray_x + (tray_w / 2) - (win_w / 2);
+            let y;
+            
+            if let Some(monitor) = window.current_monitor().ok().flatten() {
+                let monitor_size = monitor.size();
+                let monitor_h = monitor_size.height as i32;
+                let monitor_w = monitor_size.width as i32;
+                
+                if tray_y > monitor_h / 2 {
+                    y = tray_y - win_h - 10;
+                } else {
+                    y = tray_y + tray_h + 10;
+                }
+                
+                if x < 10 {
+                    x = 10;
+                }
+                if x + win_w > monitor_w - 10 {
+                    x = monitor_w - win_w - 10;
+                }
             } else {
                 y = tray_y + tray_h + 10;
             }
             
-            if x < 10 {
-                x = 10;
-            }
-            if x + win_w > monitor_w - 10 {
-                x = monitor_w - win_w - 10;
-            }
-        } else {
-            y = tray_y + tray_h + 10;
+            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
+            let _ = window.show();
+            let _ = window.set_focus();
+            let _ = window.emit("window-show", ());
         }
-        
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
-        let _ = window.show();
-        let _ = window.set_focus();
-        let _ = window.emit("window-show", ());
     }
 }
 
@@ -597,8 +633,9 @@ fn pomo_toggle(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>) 
 
 #[tauri::command]
 fn pomo_set_duration(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>, mins: u32) {
-    let total_seconds = mins * 60;
-    *state.pomo_duration.lock().unwrap() = mins;
+    let total_seconds = mins;
+    let mins_val = total_seconds / 60;
+    *state.pomo_duration.lock().unwrap() = mins_val;
     *state.pomo_configured_seconds.lock().unwrap() = total_seconds;
     *state.pomo_time.lock().unwrap() = total_seconds;
     
@@ -620,21 +657,20 @@ fn pomo_set_duration(app_handle: tauri::AppHandle, state: tauri::State<'_, AppSt
     let payload = serde_json::json!({
         "pomoTime": total_seconds,
         "pomoRunning": *state.pomo_running.lock().unwrap(),
-        "pomoDuration": mins,
+        "pomoDuration": mins_val,
         "pomoConfiguredSeconds": total_seconds
     });
     let _ = app_handle.emit("pomo-tick", payload);
 }
 
 #[tauri::command]
-fn pomo_get_state(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    let payload = serde_json::json!({
+fn pomo_get_state(state: tauri::State<'_, AppState>) -> Value {
+    serde_json::json!({
         "pomoTime": *state.pomo_time.lock().unwrap(),
         "pomoRunning": *state.pomo_running.lock().unwrap(),
         "pomoDuration": *state.pomo_duration.lock().unwrap(),
         "pomoConfiguredSeconds": *state.pomo_configured_seconds.lock().unwrap()
-    });
-    let _ = app_handle.emit("pomo-tick", payload);
+    })
 }
 
 #[tauri::command]
@@ -643,7 +679,6 @@ fn get_version(app_handle: tauri::AppHandle) -> String {
 }
 
 #[tauri::command]
-#[allow(unreachable_code)]
 fn set_widget_mode(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>, enabled: bool) -> Result<(), String> {
     let user_data_path = get_user_data_dir();
     let config_path = user_data_path.join("config.json");
@@ -662,22 +697,35 @@ fn set_widget_mode(app_handle: tauri::AppHandle, state: tauri::State<'_, AppStat
         obj.insert("pomoRunning".to_string(), serde_json::json!(*state.pomo_running.lock().unwrap()));
         obj.insert("pomoTime".to_string(), serde_json::json!(*state.pomo_time.lock().unwrap()));
     }
+    *state.widget_mode.lock().unwrap() = enabled;
     
     let _ = std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap_or_default());
     
-    app_handle.restart();
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.set_skip_taskbar(enabled);
+        if enabled {
+            let _ = window.hide();
+            let _ = window.show();
+            let _ = window.set_focus();
+        } else {
+            let _ = window.hide();
+        }
+    }
+    
     Ok(())
 }
 
 #[tauri::command]
 fn push_undo_action(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>, action: Value) {
-    let mut undo = state.undo_stack.lock().unwrap();
-    undo.push(action);
-    if undo.len() > 30 {
-        undo.remove(0);
+    {
+        let mut undo = state.undo_stack.lock().unwrap();
+        undo.push(action);
+        if undo.len() > 30 {
+            undo.remove(0);
+        }
+        let mut redo = state.redo_stack.lock().unwrap();
+        redo.clear();
     }
-    let mut redo = state.redo_stack.lock().unwrap();
-    redo.clear();
     
     broadcast_undo_state(&app_handle, &state);
 }
@@ -989,6 +1037,9 @@ pub fn run() {
                             if window.is_visible().unwrap_or(false) {
                                 let _ = window.hide();
                             } else {
+                                if let Some(state) = window.try_state::<AppState>() {
+                                    *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+                                }
                                 let _ = window.show();
                                 let _ = window.set_focus();
                                 let _ = window.emit("window-show", ());
@@ -1006,6 +1057,8 @@ pub fn run() {
             pomo_configured_seconds: Arc::new(Mutex::new(25 * 60)),
             undo_stack: Arc::new(Mutex::new(Vec::new())),
             redo_stack: Arc::new(Mutex::new(Vec::new())),
+            last_show_time: Arc::new(Mutex::new(None)),
+            widget_mode: Arc::new(Mutex::new(false)),
         })
         .setup(|app| {
             let shortcut = Shortcut::new(
@@ -1050,6 +1103,7 @@ pub fn run() {
             }
             
             let app_state = app.state::<AppState>();
+            *app_state.widget_mode.lock().unwrap() = widget_mode;
             *app_state.pomo_configured_seconds.lock().unwrap() = pomo_configured_seconds;
             *app_state.pomo_duration.lock().unwrap() = pomo_configured_seconds / 60;
             *app_state.pomo_time.lock().unwrap() = pomo_time;
@@ -1078,51 +1132,84 @@ pub fn run() {
             }
             
             let window = app.get_webview_window("main").unwrap();
+            let _ = window.set_skip_taskbar(widget_mode);
+            
+            let w = window.clone();
+            let config_path_clone = config_path.clone();
             
             if widget_mode {
                 let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(widget_x, widget_y)));
                 let _ = window.show();
-                
-                // Save position on window moved
-                let config_path_clone = config_path.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Moved(pos) = event {
-                        let mut config = serde_json::json!({});
-                        if config_path_clone.exists() {
-                            if let Ok(content) = std::fs::read_to_string(&config_path_clone) {
-                                if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
-                                    config = parsed;
+            }
+            
+            window.on_window_event(move |event| {
+                match event {
+                    tauri::WindowEvent::Moved(pos) => {
+                        let is_widget = if let Some(state) = w.try_state::<AppState>() {
+                            *state.widget_mode.lock().unwrap()
+                        } else {
+                            false
+                        };
+                        if is_widget {
+                            let mut config = serde_json::json!({});
+                            if config_path_clone.exists() {
+                                if let Ok(content) = std::fs::read_to_string(&config_path_clone) {
+                                    if let Ok(parsed) = serde_json::from_str::<Value>(&content) {
+                                        config = parsed;
+                                    }
                                 }
                             }
+                            if let Some(obj) = config.as_object_mut() {
+                                obj.insert("widgetX".to_string(), serde_json::json!(pos.x));
+                                obj.insert("widgetY".to_string(), serde_json::json!(pos.y));
+                            }
+                            let _ = std::fs::write(&config_path_clone, serde_json::to_string_pretty(&config).unwrap_or_default());
                         }
-                        if let Some(obj) = config.as_object_mut() {
-                            obj.insert("widgetX".to_string(), serde_json::json!(pos.x));
-                            obj.insert("widgetY".to_string(), serde_json::json!(pos.y));
+                    }
+                    tauri::WindowEvent::Focused(false) => {
+                        let is_widget = if let Some(state) = w.try_state::<AppState>() {
+                            *state.widget_mode.lock().unwrap()
+                        } else {
+                            false
+                        };
+                        if !is_widget {
+                            let should_hide = if let Some(state) = w.try_state::<AppState>() {
+                                if let Some(last_show) = *state.last_show_time.lock().unwrap() {
+                                    last_show.elapsed().as_millis() > 200
+                                } else {
+                                    true
+                                }
+                            } else {
+                                true
+                            };
+                            if should_hide {
+                                let _ = w.hide();
+                            }
                         }
-                        let _ = std::fs::write(&config_path_clone, serde_json::to_string_pretty(&config).unwrap_or_default());
                     }
-                });
-            } else {
-                let w = window.clone();
-                window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
-                        let _ = w.hide();
-                    }
-                });
-            }
+                    _ => {}
+                }
+            });
             
             // Build the tray icon
             let icon_bytes = include_bytes!("../icons/32x32.png");
             let tray_icon = tauri::image::Image::from_bytes(icon_bytes).expect("Failed to load tray icon");
 
+            let last_click = Arc::new(Mutex::new(std::time::Instant::now() - std::time::Duration::from_secs(1)));
+            let last_click_clone = last_click.clone();
+
             let _tray = TrayIconBuilder::with_id("main")
                 .icon(tray_icon)
                 .show_menu_on_left_click(false)
-                .on_tray_icon_event(|tray, event| {
+                .on_tray_icon_event(move |tray, event| {
                     if let TrayIconEvent::Click { button, rect, .. } = event {
                         if button == MouseButton::Left {
-                            if let Some(window) = tray.app_handle().get_webview_window("main") {
-                                toggle_main_window(&window, rect);
+                            let mut last_click_time = last_click_clone.lock().unwrap();
+                            if last_click_time.elapsed() > std::time::Duration::from_millis(500) {
+                                *last_click_time = std::time::Instant::now();
+                                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                    toggle_main_window(&window, rect);
+                                }
                             }
                         }
                     }

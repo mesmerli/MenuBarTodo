@@ -10,6 +10,12 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 - **Added**: Shared directory configuration enabling both Electron and Tauri app variants to sync configuration, todo database, and archives under `%APPDATA%/menubar-todo`.
 - **Added**: Dedicated `"tauri:dev"`, `"tauri:build"`, and `"tauri:build:store"` npm scripts for Tauri developer environments, standard packaging, and Microsoft Store packaging.
 - **Fixed**: Robust Windows Registry fallback cleanup in the `set-auto-launch` and `get-auto-launch` IPC handlers to resolve a bug where the application would still run automatically on Windows startup after disabling it in the UI.
+- **Fixed**: Tauri taskbar skip behavior now dynamically updates depending on whether Standard Window Mode or Desktop Widget Mode is active.
+- **Fixed**: Prevented application restarts on toggling widget mode, solving "127.0.0.1 refused connection" errors in development.
+- **Fixed**: Corrected Pomodoro timer unit conversion on duration update.
+- **Fixed**: Fixed startup race condition on Pomodoro state loading.
+- **Fixed**: Resolved a bug where checking a todo item would cause the app to hang.
+- **Fixed**: Solved system tray left-click window hide/show behaviors.
 
 ### [1.6.0] - 2026-05-03
 - **Added**: Integrated **OpenCC-JS** for real-time simplified to traditional Chinese (Taiwan) conversion in voice input.

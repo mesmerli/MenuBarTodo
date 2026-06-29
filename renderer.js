@@ -199,7 +199,12 @@ if (pomoTimerDisplay) {
 }
 
 window.api.onPomoTick((state) => updatePomoDisplay(state));
-window.api.pomoGetState();
+const getStatePromise = window.api.pomoGetState();
+if (getStatePromise && typeof getStatePromise.then === 'function') {
+  getStatePromise.then((state) => {
+    if (state) updatePomoDisplay(state);
+  });
+}
 
 function renderTaskText(container, text) {
   container.innerHTML = '';
