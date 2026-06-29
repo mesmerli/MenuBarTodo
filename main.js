@@ -885,6 +885,28 @@ ipcMain.handle('set-auto-launch', (event, enabled) => {
       openAtLogin: enabled,
       path: app.getPath('exe')
     });
+    
+    // Fallback registry cleanup for Windows when disabling auto-launch
+    if (process.platform === 'win32' && !enabled) {
+      try {
+        const { exec } = require('child_process');
+        const keysToClean = [
+          'electron.app.MenuBar Todo',
+          'electron.app.menubar-todo',
+          'MenuBar Todo',
+          'menubar-todo'
+        ];
+        keysToClean.forEach(key => {
+          exec(`reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${key}" /f`, (err) => {
+            if (err) {
+              // Ignore errors (key might not exist)
+            }
+          });
+        });
+      } catch (e) {
+        console.error('Failed to execute registry cleanup command:', e);
+      }
+    }
     return true;
   } catch (error) {
     console.error('Failed to set login item settings:', error);
@@ -892,8 +914,27 @@ ipcMain.handle('set-auto-launch', (event, enabled) => {
   }
 });
 
-ipcMain.handle('get-auto-launch', () => {
+ipcMain.handle('get-auto-launch', async () => {
   try {
+    if (process.platform === 'win32') {
+      return new Promise((resolve) => {
+        const { exec } = require('child_process');
+        exec('reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"', (err, stdout) => {
+          if (err) {
+            resolve(false);
+            return;
+          }
+          const keys = [
+            'electron.app.MenuBar Todo',
+            'electron.app.menubar-todo',
+            'MenuBar Todo',
+            'menubar-todo'
+          ];
+          const hasKey = keys.some(key => stdout.includes(key));
+          resolve(hasKey);
+        });
+      });
+    }
     return app.getLoginItemSettings().openAtLogin;
   } catch (error) {
     return false;

@@ -1,6 +1,6 @@
 {
   "name": "menubar-todo",
-  "version": "1.6.0-build.000019",
+  "version": "1.7.0-build.000019",
   "description": "A minimal menubar todo app",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,10 @@
     "dist": "node bump-build.js && electron-builder",
     "dist-run": "node bump-build.js && electron-builder && start \"\" \"dist\\win-unpacked\\MenuBar Todo.exe\"",
     "pack-models": "tar -czf models/en.tar.gz -C models/en . && tar -czf models/zh.tar.gz -C models/zh .",
-    "test": "playwright test"
+    "test": "playwright test",
+    "tauri:dev": "node copy-frontend.js && tauri dev",
+    "tauri:build": "node copy-frontend.js && tauri build",
+    "tauri:build:store": "node copy-frontend.js && tauri build --bundles msi"
   },
   "build": {
     "appId": "com.mesme.menubartodo",
@@ -70,6 +73,7 @@
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@tauri-apps/cli": "^2.11.4",
     "electron": "^41.3.0",
     "electron-builder": "^26.8.1",
     "vosk-browser": "^0.0.8"

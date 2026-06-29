@@ -1,6 +1,7 @@
 # MenuBar Todo 📝
 
 [![Electron](https://img.shields.io/badge/Electron-41.3.0-blue.svg)](https://electronjs.org)
+[![Tauri](https://img.shields.io/badge/Tauri-2.11.3-blue.svg)](https://tauri.app)
 [![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
 
 **MenuBar Todo** 是一款為重視效率的開發者與專業人士設計的極簡、高效任務管理應用程式。它常駐於您的 Windows 系統匣，讓您能即時捕捉靈感與任務，絕不打斷您的工作流程。
@@ -72,16 +73,26 @@ npm run pack-models
 
 ### 4. 開發環境執行
 ```bash
+# 執行 Electron 版本
 npm start
+
+# 執行 Tauri 版本
+npm run tauri:dev
 ```
 
 ### 5. 建置發布執行檔
 ```bash
-# 打包並直接運行
+# Electron: 打包並直接運行
 npm run dist-run
 
-# 僅產生打包檔 (包含安裝檔與免安裝資料夾)
+# Electron: 僅產生打包檔 (包含安裝檔與免安裝資料夾)
 npm run dist
+
+# Tauri: 建置打包安裝檔 (MSI + NSIS)
+npm run tauri:build
+
+# Tauri: 建置專為微軟商店封裝的 MSI 安裝包
+npm run tauri:build:store
 ```
 
 ### 6. 自動化 E2E 測試
@@ -94,11 +105,11 @@ npm test
 
 ## 📦 技術堆疊
 
-- **核心架構**: Electron, Node.js
+- **核心架構**: Electron, Tauri v2 (Rust 後端), Node.js
 - **前端呈現**: HTML5, Vanilla CSS, JavaScript
 - **離線語音**: Vosk-WASM (完全本地 WebAssembly 支援)
 - **驗證測試**: Playwright (33 項 E2E 自動化案例)
-- **發布封裝**: Electron Builder
+- **發布封裝**: Electron Builder, WiX Toolset / NSIS (透過 Tauri)
 
 ---
 

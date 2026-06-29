@@ -4,6 +4,13 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.7.0] - 2026-06-29
+- **Added**: Support for running and packaging a **Tauri v2** desktop application alongside the Electron version.
+- **Added**: Runtime script bridge (`tauri-bridge.js`) allowing unified frontend code to function identically across both platforms.
+- **Added**: Shared directory configuration enabling both Electron and Tauri app variants to sync configuration, todo database, and archives under `%APPDATA%/menubar-todo`.
+- **Added**: Dedicated `"tauri:dev"`, `"tauri:build"`, and `"tauri:build:store"` npm scripts for Tauri developer environments, standard packaging, and Microsoft Store packaging.
+- **Fixed**: Robust Windows Registry fallback cleanup in the `set-auto-launch` and `get-auto-launch` IPC handlers to resolve a bug where the application would still run automatically on Windows startup after disabling it in the UI.
+
 ### [1.6.0] - 2026-05-03
 - **Added**: Integrated **OpenCC-JS** for real-time simplified to traditional Chinese (Taiwan) conversion in voice input.
 - **Added**: Pomodoro **Auto-Reset** feature that reverts to default duration after 5 minutes of inactivity at zero.

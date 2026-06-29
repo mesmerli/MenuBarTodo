@@ -1,6 +1,7 @@
 # MenuBar Todo 📝
 
 [![Electron](https://img.shields.io/badge/Electron-41.3.0-blue.svg)](https://electronjs.org)
+[![Tauri](https://img.shields.io/badge/Tauri-2.11.3-blue.svg)](https://tauri.app)
 [![License: ISC](https://img.shields.io/badge/License-ISC-green.svg)](https://opensource.org/licenses/ISC)
 
 **MenuBar Todo** is a minimalist, high-performance task management application designed for developers and professionals who value efficiency. It lives in your Windows system tray, allowing you to capture ideas and tasks instantly without breaking your flow.
@@ -73,16 +74,26 @@ npm run pack-models
 
 ### 4. Run in Development
 ```bash
+# Run Electron version
 npm start
+
+# Run Tauri version
+npm run tauri:dev
 ```
 
 ### 5. Build Production Executable
 ```bash
-# Build and launch
+# Electron: Build and launch
 npm run dist-run
 
-# Build only (portable + installer)
+# Electron: Build only (portable + installer)
 npm run dist
+
+# Tauri: Build installer bundle (MSI + NSIS)
+npm run tauri:build
+
+# Tauri: Build installer package specifically for Microsoft Store (MSI)
+npm run tauri:build:store
 ```
 
 ### 6. Run E2E Tests
@@ -95,11 +106,11 @@ npm test
 
 ## 📦 Tech Stack
 
-- **Core**: Electron, Node.js
+- **Core**: Electron, Tauri v2 (Rust backend), Node.js
 - **Frontend**: HTML5, Vanilla CSS, JavaScript
 - **Voice Recognition**: Vosk-WASM (offline, WebAssembly-based)
 - **Validation**: Playwright (33 E2E automation cases)
-- **Bundling**: Electron Builder
+- **Bundling**: Electron Builder, WiX Toolset / NSIS (via Tauri)
 
 ---
 
