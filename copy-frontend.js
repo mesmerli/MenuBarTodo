@@ -84,6 +84,8 @@ const copyFolderRecursive = (src, dest) => {
     const srcPath = path.join(src, file);
     const destPath = path.join(dest, file);
     if (fs.lstatSync(srcPath).isDirectory()) {
+      // Skip raw uncompressed model folders during packaging copy
+      if (file === 'en' || file === 'zh') return;
       copyFolderRecursive(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
