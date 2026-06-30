@@ -11,8 +11,8 @@
     "pack-models": "tar -czf models/en.tar.gz -C models/en . && tar -czf models/zh.tar.gz -C models/zh .",
     "test": "playwright test",
     "tauri:dev": "node copy-frontend.js && tauri dev",
-    "tauri:build": "node copy-frontend.js && tauri build",
-    "tauri:build:store": "node copy-frontend.js && tauri build --bundles msi"
+    "tauri:build": "node copy-frontend.js && tauri build && node rename-tauri-output.js",
+    "tauri:build:store": "node copy-frontend.js && tauri build --bundles msi && node rename-tauri-output.js"
   },
   "build": {
     "appId": "com.mesme.menubartodo",
