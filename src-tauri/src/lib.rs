@@ -614,6 +614,19 @@ fn pomo_toggle(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>) 
     let mut running = state.pomo_running.lock().unwrap();
     if *running {
         *running = false;
+        drop(running);
+        
+        let time = *state.pomo_time.lock().unwrap();
+        let duration = *state.pomo_duration.lock().unwrap();
+        let configured = *state.pomo_configured_seconds.lock().unwrap();
+        
+        let payload = serde_json::json!({
+            "pomoTime": time,
+            "pomoRunning": false,
+            "pomoDuration": duration,
+            "pomoConfiguredSeconds": configured
+        });
+        let _ = app_handle.emit("pomo-tick", payload);
     } else {
         drop(running);
         let mut time = state.pomo_time.lock().unwrap();
@@ -702,7 +715,7 @@ fn set_widget_mode(app_handle: tauri::AppHandle, state: tauri::State<'_, AppStat
     let _ = std::fs::write(&config_path, serde_json::to_string_pretty(&config).unwrap_or_default());
     
     if let Some(window) = app_handle.get_webview_window("main") {
-        let _ = window.set_skip_taskbar(enabled);
+        let _ = window.set_skip_taskbar(!enabled);
         if enabled {
             let _ = window.hide();
             let _ = window.show();
@@ -1132,7 +1145,7 @@ pub fn run() {
             }
             
             let window = app.get_webview_window("main").unwrap();
-            let _ = window.set_skip_taskbar(widget_mode);
+            let _ = window.set_skip_taskbar(!widget_mode);
             
             let w = window.clone();
             let config_path_clone = config_path.clone();
@@ -1164,6 +1177,23 @@ pub fn run() {
                                 obj.insert("widgetY".to_string(), serde_json::json!(pos.y));
                             }
                             let _ = std::fs::write(&config_path_clone, serde_json::to_string_pretty(&config).unwrap_or_default());
+                        }
+                    }
+                    tauri::WindowEvent::Focused(true) => {
+                        let is_widget = if let Some(state) = w.try_state::<AppState>() {
+                            *state.widget_mode.lock().unwrap()
+                        } else {
+                            false
+                        };
+                        if is_widget {
+                            let app_handle = w.app_handle();
+                            for win in app_handle.webview_windows().values() {
+                                if win.is_visible().unwrap_or(false) {
+                                    let _ = win.set_always_on_top(true);
+                                    let _ = win.set_always_on_top(false);
+                                }
+                            }
+                            let _ = w.set_focus();
                         }
                     }
                     tauri::WindowEvent::Focused(false) => {

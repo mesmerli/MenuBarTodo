@@ -112,11 +112,16 @@ if (pomoBtn) {
 }
 
 if (pomoTimerDisplay) {
-  pomoTimerDisplay.addEventListener('click', () => {
-    if (pomoRunning) return; 
+  pomoTimerDisplay.addEventListener('click', (e) => {
+    if (pomoRunning) {
+      window.api.pomoToggle();
+      return;
+    }
+    if (e.target.tagName === 'INPUT') return;
     
     const input = document.createElement('input');
     input.type = 'text';
+    input.addEventListener('click', (ev) => ev.stopPropagation());
     
     // If countdown reached zero, fallback to last manual duration
     const targetTime = pomoTime === 0 ? pomoConfiguredSeconds : pomoTime;
@@ -569,7 +574,9 @@ async function startVosk() {
     // Load the respective model dynamically based on locale if not cached
     if (!model) {
       voiceBtn.style.opacity = '0.5';
-      const modelPath = window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz';
+      const modelPath = window.__TAURI__
+        ? (window.i18n.lang === 'zh-TW' ? 'models/zh.tar.gz' : 'models/en.tar.gz')
+        : (window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz');
       console.log('Vosk: Starting model load from', modelPath);
       model = await Vosk.createModel(modelPath);
       console.log('Vosk: Model loaded successfully!');

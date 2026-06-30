@@ -4,6 +4,14 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.7.1] - 2026-06-30
+- **Added**: Main window `data-tauri-drag-region` to guarantee reliable drag behavior on startup in Tauri.
+- **Fixed**: Kept taskbar icon visible in Desktop Widget Mode for the Tauri version, and promoted all open windows (main + child windows) to front when the taskbar icon is clicked.
+- **Fixed**: Resolved a bug in the Tauri backend where the `pomo-tick` event was not broadcast when the Pomodoro timer was paused, causing the UI to think it was still running.
+- **Fixed**: Allowed editing of the Pomodoro timer duration when it is paused after a countdown has started.
+- **Fixed**: Enabled clicking on the Pomodoro timer display to pause the timer during a countdown.
+- **Fixed**: Solved a Web Worker load error by serving the Vosk voice recognition models using standard relative paths instead of the `local-model://` protocol in Tauri.
+
 ### [1.7.0] - 2026-06-29
 - **Added**: Support for running and packaging a **Tauri v2** desktop application alongside the Electron version.
 - **Added**: Runtime script bridge (`tauri-bridge.js`) allowing unified frontend code to function identically across both platforms.

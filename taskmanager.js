@@ -185,7 +185,9 @@ async function init() {
     try {
       if (!model) {
         voiceBtn.style.opacity = '0.5';
-        const modelPath = window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz';
+        const modelPath = window.__TAURI__
+          ? (window.i18n.lang === 'zh-TW' ? 'models/zh.tar.gz' : 'models/en.tar.gz')
+          : (window.i18n.lang === 'zh-TW' ? 'local-model://models/zh.tar.gz' : 'local-model://models/en.tar.gz');
         console.log('History Vosk: Starting model load from', modelPath);
         model = await Vosk.createModel(modelPath);
         console.log('History Vosk: Model loaded successfully!');
