@@ -285,7 +285,7 @@ fn create_web_window(app_handle: &tauri::AppHandle, label: &str, title: &str, ur
         let _ = window.show();
         let _ = window.set_focus();
     } else {
-        if let Ok(new_win) = WebviewWindowBuilder::new(
+        if WebviewWindowBuilder::new(
             app_handle,
             label,
             WebviewUrl::App(std::path::PathBuf::from(url))
@@ -294,22 +294,9 @@ fn create_web_window(app_handle: &tauri::AppHandle, label: &str, title: &str, ur
         .inner_size(width, height)
         .resizable(false)
         .fullscreen(false)
-        .build() {
-            let app_handle_clone = app_handle.clone();
-            new_win.on_window_event(move |event| {
-                if let tauri::WindowEvent::Focused(true) = event {
-                    if let Some(main_win) = app_handle_clone.get_webview_window("main") {
-                        if !main_win.is_visible().unwrap_or(false) {
-                            if let Some(state) = main_win.try_state::<AppState>() {
-                                *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
-                            }
-                            let _ = main_win.show();
-                            let _ = main_win.set_focus();
-                            let _ = main_win.emit("window-show", ());
-                        }
-                    }
-                }
-            });
+        .build()
+        .is_ok() {
+            // Window built successfully
         }
     }
 }
@@ -1313,20 +1300,33 @@ pub fn run() {
                             false
                         };
                         if !is_widget {
-                            let should_hide = if let Some(state) = w.try_state::<AppState>() {
-                                if let Some(last_show) = *state.last_show_time.lock().unwrap() {
-                                    last_show.elapsed().as_millis() > 200
+                            let app_handle = w.app_handle();
+                            let mut child_focused = false;
+                            for label in &["taskmanager", "archive", "about"] {
+                                if let Some(child_win) = app_handle.get_webview_window(label) {
+                                    if child_win.is_focused().unwrap_or(false) {
+                                        child_focused = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if !child_focused {
+                                let should_hide = if let Some(state) = w.try_state::<AppState>() {
+                                    if let Some(last_show) = *state.last_show_time.lock().unwrap() {
+                                        last_show.elapsed().as_millis() > 200
+                                    } else {
+                                        true
+                                    }
                                 } else {
                                     true
+                                };
+                                if should_hide {
+                                    if let Some(state) = w.try_state::<AppState>() {
+                                        *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
+                                    }
+                                    let _ = w.hide();
                                 }
-                            } else {
-                                true
-                            };
-                            if should_hide {
-                                if let Some(state) = w.try_state::<AppState>() {
-                                    *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
-                                }
-                                let _ = w.hide();
                             }
                         }
                     }
