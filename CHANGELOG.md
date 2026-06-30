@@ -11,6 +11,8 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 - **Added**: Focus-loss hide debounce (200ms) in Tauri to prevent window flashing when clicking the system tray icon while focused.
 - **Added**: Enforced single instance limitation in Tauri using `tauri-plugin-single-instance`, focusing the existing window on secondary launch attempts.
 - **Changed**: Toggled main window state in Desktop Widget Mode via **Minimize/Restore** instead of Hide/Show on hotkey/tray clicks, resolving Windows taskbar duplicate process spawn bugs.
+- **Fixed**: Prevented main window from stealing focus when child windows (Task Manager, Archive, About) are focused, and avoided hiding the main window on focus loss when a child window is currently active.
+- **Fixed**: Corrected state transition issues where minimized windows could get stuck and fail to toggle via hotkeys or single-instance secondary launches by explicitly calling `unminimize` on show.
 - **Fixed**: Kept taskbar icon visible in Desktop Widget Mode for the Tauri version, and promoted all open windows (main + child windows) to front when the taskbar icon is clicked.
 - **Fixed**: Resolved a bug in the Tauri backend where the `pomo-tick` event was not broadcast when the Pomodoro timer was paused, causing the UI to think it was still running.
 - **Fixed**: Allowed editing of the Pomodoro timer duration when it is paused after a countdown has started.
