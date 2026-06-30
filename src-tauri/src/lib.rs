@@ -369,7 +369,8 @@ fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
             let _ = window.minimize();
         }
     } else {
-        if window.is_visible().unwrap_or(false) {
+        let is_visible = window.is_visible().unwrap_or(false) && !window.is_minimized().unwrap_or(false);
+        if is_visible {
             if let Some(state) = window.try_state::<AppState>() {
                 *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
             }
@@ -433,6 +434,7 @@ fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
                     *state.last_tray_position.lock().unwrap() = Some((x, y));
                 }
                 let _ = window.show();
+                let _ = window.unminimize();
                 let _ = window.set_focus();
                 let _ = window.emit("window-show", ());
             }
