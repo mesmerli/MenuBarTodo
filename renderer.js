@@ -294,16 +294,37 @@ function isSameMonth(d1, d2) {
          d1.getMonth() === d2.getMonth();
 }
 
+async function updateDragRegion() {
+  try {
+    const config = await window.api.loadConfig();
+    const isWidgetMode = !!config.widgetMode;
+    const container = document.querySelector('.app-container');
+    if (container) {
+      if (isWidgetMode) {
+        container.setAttribute('data-tauri-drag-region', '');
+        container.classList.add('draggable');
+      } else {
+        container.removeAttribute('data-tauri-drag-region');
+        container.classList.remove('draggable');
+      }
+    }
+  } catch (e) {
+    console.error('Failed to update drag region:', e);
+  }
+}
+
 async function init() {
   await window.i18n.init();
+  await updateDragRegion();
   const state = await window.api.getUndoState();
   if (mainUndoBtn) mainUndoBtn.disabled = !state.canUndo;
   
   todos = await window.api.loadTodos();
   renderTodos();
   
-  window.api.onWindowShow(() => {
+  window.api.onWindowShow(async () => {
     input.focus();
+    await updateDragRegion();
   });
   
   window.api.onTodosUpdated(async () => {
