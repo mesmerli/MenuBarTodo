@@ -18,9 +18,14 @@ if (fullVersion.includes('-build.')) {
 }
 
 const bundleDir = path.join(__dirname, 'src-tauri', 'target', 'release', 'bundle');
+const msixDir = path.join(__dirname, 'src-tauri', 'target', 'msix');
 
-if (!fs.existsSync(bundleDir)) {
-  console.log(`Bundle directory not found: ${bundleDir}. Skipping rename.`);
+const dirsToRename = [];
+if (fs.existsSync(bundleDir)) dirsToRename.push(bundleDir);
+if (fs.existsSync(msixDir)) dirsToRename.push(msixDir);
+
+if (dirsToRename.length === 0) {
+  console.log('No build directories found. Skipping rename.');
   process.exit(0);
 }
 
@@ -42,6 +47,6 @@ function renameFilesRecursively(dir) {
   });
 }
 
-console.log(`Scanning for installers to rename in ${bundleDir}...`);
-renameFilesRecursively(bundleDir);
+console.log(`Scanning for installers to rename in: ${dirsToRename.join(', ')}...`);
+dirsToRename.forEach(dir => renameFilesRecursively(dir));
 console.log('Renaming complete!');

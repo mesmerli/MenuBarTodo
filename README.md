@@ -92,8 +92,11 @@ npm run dist
 # Tauri: Build installer bundle (MSI + NSIS)
 npm run tauri:build
 
-# Tauri: Build installer package specifically for Microsoft Store (MSI)
+# Tauri: Build packaged MSIX / MSIXBundle specifically for Microsoft Store
 npm run tauri:build:store
+
+# Tauri: Only generate MSIX packages (bypassing normal build steps)
+npm run tauri:windows:build
 ```
 
 ### 6. Run E2E Tests

@@ -6,8 +6,9 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ### [1.7.1] - 2026-06-30
 - **Added**: Programmatic window dragging in Tauri via `startDragging()` API, resolving WebView2 static CSS `-webkit-app-region` limitations.
+- **Added**: Support for building Windows Store-compatible `.msix` and `.msixbundle` installer packages for the Tauri version using `tauri-windows-bundle`.
 - **Added**: Automatic version injection of full package.json version (including build suffix) into `tauri-bridge.js` during asset copying.
-- **Added**: Post-build script `rename-tauri-output.js` to automatically rename Tauri installer packages to include the build number.
+- **Added**: Post-build script `rename-tauri-output.js` to automatically rename Tauri installer packages (including MSI, EXE, and MSIX outputs) to include the build number.
 - **Added**: Focus-loss hide debounce (200ms) in Tauri to prevent window flashing when clicking the system tray icon while focused.
 - **Added**: Enforced single instance limitation in Tauri using `tauri-plugin-single-instance`, focusing the existing window on secondary launch attempts.
 - **Changed**: Toggled main window state in Desktop Widget Mode via **Minimize/Restore** instead of Hide/Show on hotkey/tray clicks, resolving Windows taskbar duplicate process spawn bugs.

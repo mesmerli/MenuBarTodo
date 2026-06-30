@@ -91,8 +91,11 @@ npm run dist
 # Tauri: 建置打包安裝檔 (MSI + NSIS)
 npm run tauri:build
 
-# Tauri: 建置專為微軟商店封裝的 MSI 安裝包
+# Tauri: 建置專為微軟商店封裝的 MSIX / MSIXBundle 安裝包
 npm run tauri:build:store
+
+# Tauri: 僅打包建置 MSIX (跳過一般 Tauri 建置流程)
+npm run tauri:windows:build
 ```
 
 ### 6. 自動化 E2E 測試

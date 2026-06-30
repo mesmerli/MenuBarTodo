@@ -12,7 +12,8 @@
     "test": "playwright test",
     "tauri:dev": "node copy-frontend.js && tauri dev",
     "tauri:build": "node copy-frontend.js && tauri build && node rename-tauri-output.js",
-    "tauri:build:store": "node copy-frontend.js && tauri build --bundles msi && node rename-tauri-output.js"
+    "tauri:build:store": "node copy-frontend.js && tauri build && npx tauri-windows-bundle build && node rename-tauri-output.js",
+    "tauri:windows:build": "npx tauri-windows-bundle build"
   },
   "build": {
     "appId": "com.mesme.menubartodo",
@@ -76,6 +77,7 @@
     "@tauri-apps/cli": "^2.11.4",
     "electron": "^41.3.0",
     "electron-builder": "^26.8.1",
-    "vosk-browser": "^0.0.8"
+    "vosk-browser": "^0.0.8",
+    "@choochmeque/tauri-windows-bundle": "^0.1.26"
   }
 }
