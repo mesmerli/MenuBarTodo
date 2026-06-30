@@ -217,7 +217,9 @@ function createWindow() {
     });
   } else {
     win.on('moved', () => {
+      if (win.isMinimized()) return;
       const [x, y] = win.getPosition();
+      if (x <= -30000 || y <= -30000) return;
       try {
         let config = {};
         if (fs.existsSync(configPath)) {
@@ -244,15 +246,17 @@ function createWindow() {
 
 function toggleWindow() {
   if (isWidgetMode) {
-    // Force visibility refresh to jump above overlapping windows
-    win.hide();
-    win.show();
-    win.focus();
-    // Set to front temporarily
-    win.setAlwaysOnTop(true, 'screen-saver');
-    setTimeout(() => {
-      if (win) win.setAlwaysOnTop(false);
-    }, 1000);
+    if (win.isMinimized()) {
+      win.restore();
+      win.focus();
+      // Set to front temporarily
+      win.setAlwaysOnTop(true, 'screen-saver');
+      setTimeout(() => {
+        if (win) win.setAlwaysOnTop(false);
+      }, 1000);
+    } else {
+      win.minimize();
+    }
     return;
   }
 

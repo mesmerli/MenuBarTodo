@@ -16,6 +16,7 @@ struct AppState {
     last_show_time: Arc<Mutex<Option<std::time::Instant>>>,
     widget_mode: Arc<Mutex<bool>>,
     last_tray_position: Arc<Mutex<Option<(i32, i32)>>>,
+    last_hide_time: Arc<Mutex<Option<std::time::Instant>>>,
 }
 
 fn get_user_data_dir() -> PathBuf {
@@ -350,70 +351,91 @@ fn position_window_near_tray(window: &tauri::WebviewWindow) {
 }
 
 fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
-    if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
+    let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+        *state.widget_mode.lock().unwrap()
     } else {
+        false
+    };
+    
+    if widget_mode {
         if let Some(state) = window.try_state::<AppState>() {
             *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
         }
-        
-        let widget_mode = if let Some(state) = window.try_state::<AppState>() {
-            *state.widget_mode.lock().unwrap()
-        } else {
-            false
-        };
-        
-        if widget_mode {
-            // Standard Window Mode (Desktop Widget Mode) - Wake up and do not change position
-            let _ = window.show();
+        if window.is_minimized().unwrap_or(false) {
+            let _ = window.unminimize();
             let _ = window.set_focus();
             let _ = window.emit("window-show", ());
         } else {
-            // Not Standard Window Mode (Tray Popup Mode) - Position on top of the tray
-            let (tray_x, tray_y) = match rect.position {
-                tauri::Position::Physical(p) => (p.x, p.y),
-                tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
+            let _ = window.minimize();
+        }
+    } else {
+        if window.is_visible().unwrap_or(false) {
+            if let Some(state) = window.try_state::<AppState>() {
+                *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
+            }
+            let _ = window.hide();
+        } else {
+            let should_show = if let Some(state) = window.try_state::<AppState>() {
+                if let Some(last_hide) = *state.last_hide_time.lock().unwrap() {
+                    last_hide.elapsed().as_millis() > 200
+                } else {
+                    true
+                }
+            } else {
+                true
             };
-            let (tray_w, tray_h) = match rect.size {
-                tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
-                tauri::Size::Logical(s) => (s.width as i32, s.height as i32),
-            };
             
-            let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 600));
-            let win_w = win_size.width as i32;
-            let win_h = win_size.height as i32;
-            
-            let mut x = tray_x + (tray_w / 2) - (win_w / 2);
-            let y;
-            
-            if let Some(monitor) = window.current_monitor().ok().flatten() {
-                let monitor_size = monitor.size();
-                let monitor_h = monitor_size.height as i32;
-                let monitor_w = monitor_size.width as i32;
+            if should_show {
+                if let Some(state) = window.try_state::<AppState>() {
+                    *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+                }
                 
-                if tray_y > monitor_h / 2 {
-                    y = tray_y - win_h - 10;
+                // Not Standard Window Mode (Tray Popup Mode) - Position on top of the tray
+                let (tray_x, tray_y) = match rect.position {
+                    tauri::Position::Physical(p) => (p.x, p.y),
+                    tauri::Position::Logical(p) => (p.x as i32, p.y as i32),
+                };
+                let (tray_w, tray_h) = match rect.size {
+                    tauri::Size::Physical(s) => (s.width as i32, s.height as i32),
+                    tauri::Size::Logical(s) => (s.width as i32, s.height as i32),
+                };
+                
+                let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 600));
+                let win_w = win_size.width as i32;
+                let win_h = win_size.height as i32;
+                
+                let mut x = tray_x + (tray_w / 2) - (win_w / 2);
+                let y;
+                
+                if let Some(monitor) = window.current_monitor().ok().flatten() {
+                    let monitor_size = monitor.size();
+                    let monitor_h = monitor_size.height as i32;
+                    let monitor_w = monitor_size.width as i32;
+                    
+                    if tray_y > monitor_h / 2 {
+                        y = tray_y - win_h - 10;
+                    } else {
+                        y = tray_y + tray_h + 10;
+                    }
+                    
+                    if x < 10 {
+                        x = 10;
+                    }
+                    if x + win_w > monitor_w - 10 {
+                        x = monitor_w - win_w - 10;
+                    }
                 } else {
                     y = tray_y + tray_h + 10;
                 }
                 
-                if x < 10 {
-                    x = 10;
+                let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
+                if let Some(state) = window.try_state::<AppState>() {
+                    *state.last_tray_position.lock().unwrap() = Some((x, y));
                 }
-                if x + win_w > monitor_w - 10 {
-                    x = monitor_w - win_w - 10;
-                }
-            } else {
-                y = tray_y + tray_h + 10;
+                let _ = window.show();
+                let _ = window.set_focus();
+                let _ = window.emit("window-show", ());
             }
-            
-            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
-            if let Some(state) = window.try_state::<AppState>() {
-                *state.last_tray_position.lock().unwrap() = Some((x, y));
-            }
-            let _ = window.show();
-            let _ = window.set_focus();
-            let _ = window.emit("window-show", ());
         }
     }
 }
@@ -750,6 +772,7 @@ fn set_widget_mode(app_handle: tauri::AppHandle, state: tauri::State<'_, AppStat
             let _ = window.hide();
             let _ = window.show();
             let _ = window.set_focus();
+            let _ = window.emit("window-show", ());
         } else {
             let _ = window.hide();
         }
@@ -1077,23 +1100,38 @@ pub fn run() {
                 if event.state() == ShortcutState::Pressed {
                     if shortcut.matches(Modifiers::CONTROL | Modifiers::SHIFT, Code::Space) {
                         if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
+                            let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+                                *state.widget_mode.lock().unwrap()
                             } else {
+                                false
+                            };
+                            
+                            if widget_mode {
                                 if let Some(state) = window.try_state::<AppState>() {
                                     *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
                                 }
-                                let widget_mode = if let Some(state) = window.try_state::<AppState>() {
-                                    *state.widget_mode.lock().unwrap()
+                                if window.is_minimized().unwrap_or(false) {
+                                    let _ = window.unminimize();
+                                    let _ = window.set_focus();
+                                    let _ = window.emit("window-show", ());
                                 } else {
-                                    false
-                                };
-                                if !widget_mode {
-                                    position_window_near_tray(&window);
+                                    let _ = window.minimize();
                                 }
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                                let _ = window.emit("window-show", ());
+                            } else {
+                                if window.is_visible().unwrap_or(false) {
+                                    if let Some(state) = window.try_state::<AppState>() {
+                                        *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
+                                    }
+                                    let _ = window.hide();
+                                } else {
+                                    if let Some(state) = window.try_state::<AppState>() {
+                                        *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+                                    }
+                                    position_window_near_tray(&window);
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                    let _ = window.emit("window-show", ());
+                                }
                             }
                         }
                     }
@@ -1111,6 +1149,7 @@ pub fn run() {
             last_show_time: Arc::new(Mutex::new(None)),
             widget_mode: Arc::new(Mutex::new(false)),
             last_tray_position: Arc::new(Mutex::new(None)),
+            last_hide_time: Arc::new(Mutex::new(None)),
         })
         .setup(|app| {
             let shortcut = Shortcut::new(
@@ -1197,6 +1236,9 @@ pub fn run() {
             window.on_window_event(move |event| {
                 match event {
                     tauri::WindowEvent::Moved(pos) => {
+                        if pos.x <= -30000 || pos.y <= -30000 {
+                            return;
+                        }
                         let is_widget = if let Some(state) = w.try_state::<AppState>() {
                             *state.widget_mode.lock().unwrap()
                         } else {
@@ -1252,6 +1294,9 @@ pub fn run() {
                                 true
                             };
                             if should_hide {
+                                if let Some(state) = w.try_state::<AppState>() {
+                                    *state.last_hide_time.lock().unwrap() = Some(std::time::Instant::now());
+                                }
                                 let _ = w.hide();
                             }
                         }

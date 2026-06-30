@@ -5,12 +5,17 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 ---
 
 ### [1.7.1] - 2026-06-30
-- **Added**: Main window `data-tauri-drag-region` to guarantee reliable drag behavior on startup in Tauri.
+- **Added**: Programmatic window dragging in Tauri via `startDragging()` API, resolving WebView2 static CSS `-webkit-app-region` limitations.
+- **Added**: Automatic version injection of full package.json version (including build suffix) into `tauri-bridge.js` during asset copying.
+- **Added**: Post-build script `rename-tauri-output.js` to automatically rename Tauri installer packages to include the build number.
+- **Added**: Focus-loss hide debounce (200ms) in Tauri to prevent window flashing when clicking the system tray icon while focused.
+- **Changed**: Toggled main window state in Desktop Widget Mode via **Minimize/Restore** instead of Hide/Show on hotkey/tray clicks, resolving Windows taskbar duplicate process spawn bugs.
 - **Fixed**: Kept taskbar icon visible in Desktop Widget Mode for the Tauri version, and promoted all open windows (main + child windows) to front when the taskbar icon is clicked.
 - **Fixed**: Resolved a bug in the Tauri backend where the `pomo-tick` event was not broadcast when the Pomodoro timer was paused, causing the UI to think it was still running.
 - **Fixed**: Allowed editing of the Pomodoro timer duration when it is paused after a countdown has started.
 - **Fixed**: Enabled clicking on the Pomodoro timer display to pause the timer during a countdown.
 - **Fixed**: Solved a Web Worker load error by serving the Vosk voice recognition models using standard relative paths instead of the `local-model://` protocol in Tauri.
+- **Fixed**: Excluded raw uncompressed model directories from Tauri builds, reducing package size significantly.
 
 ### [1.7.0] - 2026-06-29
 - **Added**: Support for running and packaging a **Tauri v2** desktop application alongside the Electron version.
