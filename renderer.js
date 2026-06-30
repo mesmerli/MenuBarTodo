@@ -294,17 +294,37 @@ function isSameMonth(d1, d2) {
          d1.getMonth() === d2.getMonth();
 }
 
+let isWidgetMode = false;
+
+// Programmatic Window Dragging for Tauri (works consistently on Windows)
+if (window.__TAURI__) {
+  const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
+  const appWindow = getCurrentWebviewWindow();
+  
+  const container = document.querySelector('.app-container');
+  if (container) {
+    container.addEventListener('mousedown', (e) => {
+      if (!isWidgetMode) return;
+      if (e.buttons !== 1) return;
+      
+      // Skip interactive elements
+      const noDragSelector = 'button, input, .tab, .todo-item, .pomodoro-container, #pomo-timer, svg, path, a';
+      if (e.target.closest(noDragSelector)) return;
+      
+      appWindow.startDragging();
+    });
+  }
+}
+
 async function updateDragRegion() {
   try {
     const config = await window.api.loadConfig();
-    const isWidgetMode = !!config.widgetMode;
+    isWidgetMode = !!config.widgetMode;
     const container = document.querySelector('.app-container');
     if (container) {
       if (isWidgetMode) {
-        container.setAttribute('data-tauri-drag-region', '');
         container.classList.add('draggable');
       } else {
-        container.removeAttribute('data-tauri-drag-region');
         container.classList.remove('draggable');
       }
     }
