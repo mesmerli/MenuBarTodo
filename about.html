@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title data-i18n="about-title">關於 MenuBar Todo</title>
@@ -11,6 +12,7 @@
       --accent: #5e6ad2;
       --border: rgba(255, 255, 255, 0.1);
     }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-color);
@@ -25,24 +27,29 @@
       text-align: center;
       -webkit-app-region: drag;
     }
+
     .container {
       padding: 20px;
     }
+
     img {
       width: 64px;
       height: 64px;
       margin-bottom: 16px;
       filter: drop-shadow(0 0 10px var(--accent));
     }
+
     h1 {
       font-size: 18px;
       margin: 0 0 8px 0;
     }
+
     p {
       font-size: 13px;
       color: var(--text-secondary);
       margin: 4px 0;
     }
+
     .version-tag {
       background: rgba(94, 106, 210, 0.1);
       color: var(--accent);
@@ -52,6 +59,7 @@
       margin-top: 8px;
       display: inline-block;
     }
+
     button {
       margin-top: 24px;
       background: var(--accent);
@@ -64,12 +72,14 @@
       transition: all 0.2s;
       -webkit-app-region: no-drag;
     }
+
     button:hover {
       filter: brightness(1.1);
       transform: scale(1.05);
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <img src="icon.png" alt="App Icon">
@@ -79,7 +89,7 @@
       <span class="version-tag"><span data-i18n="about-version">版本</span> v<span id="version-num">1.0.0</span></span>
     </div>
     <p style="margin-top: 12px;"><span data-i18n="about-author">作者</span>: mesmerli</p>
-    <button onclick="window.close()" data-i18n="btn-close">關閉</button>
+    <p id="trial-status" style="font-size: 12px; color: var(--accent); margin-top: 12px; display: none;"></p>
   </div>
 
   <script src="tauri-bridge.js"></script>
@@ -89,7 +99,7 @@
       const config = await window.api.loadConfig();
       window.i18n.lang = config.lang || 'zh-TW';
       window.i18n.applyTranslations();
-      
+
       // Get version from app dynamically
       try {
         const version = await window.api.getVersion();
@@ -97,13 +107,60 @@
       } catch (e) {
         console.error('Failed to fetch version:', e);
       }
+
+      // Check Microsoft Store trial status
+      try {
+        if (window.api && typeof window.api.checkTrialLicense === 'function') {
+          const status = await window.api.checkTrialLicense();
+
+          // --- 模擬區塊開始：強制定義試用剩餘 7 天 ---
+          /*
+          const jsEpochTicks = 11644473600000;
+          const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+          const mockExpirationTicks = (Date.now() + sevenDaysMs + jsEpochTicks) * 10000;
+
+          let status = { isTrial: true, expirationDate: mockExpirationTicks };
+          */
+          /* 
+          const jsEpochTicks = 11644473600000;
+          const oneDayAgoMs = -1 * 24 * 60 * 60 * 1000;
+          const mockExpirationTicks = (Date.now() + oneDayAgoMs + jsEpochTicks) * 10000;
+          let status = { isTrial: true, expirationDate: mockExpirationTicks };
+          */
+          // --- 模擬區塊結束 ---
+
+          if (status && status.isTrial) {
+            const trialStatusEl = document.getElementById('trial-status');
+            const now = Date.now();
+            const expirationDate = status.expirationDate; // 100-ns intervals since 1601 UTC
+            const jsEpochTicks = 11644473600000;
+            const nowTicks = (now + jsEpochTicks) * 10000;
+
+            if (nowTicks >= expirationDate) {
+              trialStatusEl.textContent = window.i18n.lang === 'zh-TW'
+                ? '試用期已結束 (請至 Microsoft Store 購買完整版)'
+                : 'Trial has expired (please purchase the full version from Microsoft Store)';
+              trialStatusEl.style.color = '#ff4d4f';
+            } else {
+              const daysLeft = Math.ceil((expirationDate - nowTicks) / (10000 * 1000 * 60 * 60 * 24));
+              trialStatusEl.textContent = window.i18n.lang === 'zh-TW'
+                ? `試用版：剩餘 ${daysLeft} 天`
+                : `Trial version: ${daysLeft} days remaining`;
+            }
+            trialStatusEl.style.display = 'block';
+          }
+        }
+      } catch (e) {
+        console.error('Failed to check trial status in About:', e);
+      }
     }
     init();
-    
+
     window.api.onLanguageChanged((lang) => {
       window.i18n.lang = lang;
       window.i18n.applyTranslations();
     });
   </script>
 </body>
+
 </html>

@@ -4,6 +4,14 @@ All notable changes to the **MenuBar Todo** project will be documented in this f
 
 ---
 
+### [1.7.2] - 2026-06-30
+- **Added**: Built-in Windows Store trial license verification (`check_trial_license`) in the Tauri backend, using standard WinRT `StoreContext` APIs.
+- **Added**: Beautiful trial status display inside the About window showing trial days remaining (e.g. `試用版：剩餘 X 天`).
+- **Added**: Soft trial expiration restrictions in the main window: automatically disables todo input creation, microphone, and add buttons upon expiration while keeping the todo list visible for reading.
+- **Added**: Smooth redirection helper: clicking on the disabled input area when trial is expired automatically launches the Microsoft Store page for purchase using a custom click overlay.
+- **Fixed**: Resolved a bug in Tauri where sub-windows (e.g. About window) would fade to blank white and fail to exit when calling `window.close()`, by routing to a new unified `window.api.closeWindow()` abstraction.
+- **Removed**: Stale `alert()` dialog boxes during trial expiration check on main window startup to avoid blocking user flows.
+
 ### [1.7.1] - 2026-06-30
 - **Added**: Programmatic window dragging in Tauri via `startDragging()` API, resolving WebView2 static CSS `-webkit-app-region` limitations.
 - **Added**: Support for building Windows Store-compatible `.msix` and `.msixbundle` installer packages for the Tauri version using `tauri-windows-bundle`.

@@ -34,6 +34,7 @@ if (typeof window !== 'undefined' && !window.api) {
         window.__TAURI__.event.listen('pomo-tick', (event) => callback(event.payload));
       },
       getVersion: () => window.__TAURI__.core.invoke('get_version'),
+      checkTrialLicense: () => window.__TAURI__.core.invoke('check_trial_license'),
       setWidgetMode: (enabled) => window.__TAURI__.core.invoke('set_widget_mode', { enabled }),
       
       // Global Undo System
@@ -43,7 +44,8 @@ if (typeof window !== 'undefined' && !window.api) {
       getUndoState: () => window.__TAURI__.core.invoke('get_undo_state'),
       onUndoStateUpdated: (callback) => {
         window.__TAURI__.event.listen('undo-state-updated', (event) => callback(event.payload));
-      }
+      },
+      closeWindow: () => window.__TAURI__.webviewWindow.getCurrentWebviewWindow().close()
     };
   }
 }

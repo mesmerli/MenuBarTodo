@@ -20,7 +20,7 @@ let processor = null;
 let s2tConverter = null;
 
 // Pomodoro Logic (Main Process Sync)
-let pomoDuration = window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25; 
+let pomoDuration = window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25;
 let pomoTime = pomoDuration * 60;
 let pomoRunning = false;
 let hasPlayedDing = false;
@@ -32,16 +32,16 @@ function playTickSound() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    
+
     osc.type = 'sine';
     osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-    
+
     gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-    
+
     osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    
+
     osc.start();
     osc.stop(audioCtx.currentTime + 0.1);
   } catch (e) {
@@ -54,16 +54,16 @@ function playDingSound() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    
+
     osc.type = 'sine';
     osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 tone
-    
+
     gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
-    
+
     osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    
+
     osc.start();
     osc.stop(audioCtx.currentTime + 1.2);
   } catch (e) {
@@ -83,10 +83,10 @@ function updatePomoDisplay(state) {
   const m = Math.floor(pomoTime / 60).toString().padStart(2, '0');
   const s = (pomoTime % 60).toString().padStart(2, '0');
   pomoTimerDisplay.textContent = `${m}:${s}`;
-  
+
   if (pomoRunning) {
     pomoBtn.style.color = 'var(--accent)';
-    hasPlayedDing = false; 
+    hasPlayedDing = false;
     if (pomoTime <= 10 && pomoTime > 0) {
       pomoTimerDisplay.classList.add('pomo-flashing');
       playTickSound();
@@ -118,17 +118,17 @@ if (pomoTimerDisplay) {
       return;
     }
     if (e.target.tagName === 'INPUT') return;
-    
+
     const input = document.createElement('input');
     input.type = 'text';
     input.addEventListener('click', (ev) => ev.stopPropagation());
-    
+
     // If countdown reached zero, fallback to last manual duration
     const targetTime = pomoTime === 0 ? pomoConfiguredSeconds : pomoTime;
     const curM = Math.floor(targetTime / 60).toString().padStart(2, '0');
     const curS = (targetTime % 60).toString().padStart(2, '0');
     input.value = `${curM}:${curS}`;
-    
+
     input.style.width = '75px';
     input.style.fontSize = '18px';
     input.style.fontWeight = 'bold';
@@ -139,34 +139,34 @@ if (pomoTimerDisplay) {
     input.style.borderRadius = '4px';
     input.style.outline = 'none';
     input.style.fontFamily = 'monospace';
-    
+
     input.addEventListener('wheel', (e) => {
       e.preventDefault();
       const parts = input.value.trim().split(':');
       let mins = parseInt(parts[0]) || 0;
       let secs = parts[1] !== undefined ? (parseInt(parts[1]) || 0) : 0;
-      
+
       if (e.deltaY < 0) {
         mins += 1;
       } else {
         if (mins > 0) mins -= 1;
       }
-      
+
       input.value = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     });
-    
+
     const savePomo = () => {
       const parts = input.value.trim().split(':');
       let mins = window.APP_CONSTANTS ? window.APP_CONSTANTS.DEFAULT_POMO_DURATION : 25;
       let secs = 0;
-      
+
       if (parts.length >= 1) {
         mins = parseInt(parts[0]) || 0;
       }
       if (parts.length >= 2) {
         secs = parseInt(parts[1]) || 0;
       }
-      
+
       const totalSeconds = Math.max(1, mins * 60 + secs);
       window.api.pomoSetDuration(totalSeconds);
     };
@@ -178,17 +178,17 @@ if (pomoTimerDisplay) {
         const parts = input.value.trim().split(':');
         let mins = parseInt(parts[0]) || 0;
         let secs = parts[1] !== undefined ? (parseInt(parts[1]) || 0) : 0;
-        
+
         if (e.key === 'ArrowUp') {
           mins += 1;
         } else {
           if (mins > 0) mins -= 1;
         }
-        
+
         input.value = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         return;
       }
-      
+
       if (e.key === 'Enter') input.blur();
       if (e.key === 'Escape') {
         input.removeEventListener('blur', savePomo);
@@ -215,7 +215,7 @@ function renderTaskText(container, text) {
   container.innerHTML = '';
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
-  
+
   parts.forEach(part => {
     if (part.match(urlRegex)) {
       const a = document.createElement('a');
@@ -273,8 +273,8 @@ window.api.onUndoStateUpdated((state) => {
 
 function isSameDay(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() &&
-         d1.getMonth() === d2.getMonth() &&
-         d1.getDate() === d2.getDate();
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
 }
 
 function isSameWeek(d1, d2) {
@@ -291,7 +291,7 @@ function isSameWeek(d1, d2) {
 
 function isSameMonth(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() &&
-         d1.getMonth() === d2.getMonth();
+    d1.getMonth() === d2.getMonth();
 }
 
 let isWidgetMode = false;
@@ -300,17 +300,17 @@ let isWidgetMode = false;
 if (window.__TAURI__) {
   const { getCurrentWebviewWindow } = window.__TAURI__.webviewWindow;
   const appWindow = getCurrentWebviewWindow();
-  
+
   const container = document.querySelector('.app-container');
   if (container) {
     container.addEventListener('mousedown', (e) => {
       if (!isWidgetMode) return;
       if (e.buttons !== 1) return;
-      
+
       // Skip interactive elements
       const noDragSelector = 'button, input, .tab, .todo-item, .pomodoro-container, #pomo-timer, svg, path, a';
       if (e.target.closest(noDragSelector)) return;
-      
+
       appWindow.startDragging();
     });
   }
@@ -333,52 +333,127 @@ async function updateDragRegion() {
   }
 }
 
+async function fnCheckTrialLicense() {
+  try {
+    let status = await window.api.checkTrialLicense();
+
+    // --- 測試模擬區塊：如果您想要在本機測試「主視窗」的試用版過期行為，請將此行註解拿掉 ---
+    // const jsEpochTicks = 11644473600000;
+    // const oneDayAgoMs = -1 * 24 * 60 * 60 * 1000; // 過期天數 (負值為已過期)
+    // const mockExpirationTicks = (Date.now() + oneDayAgoMs + jsEpochTicks) * 10000;
+    // status = { isTrial: true, expirationDate: mockExpirationTicks };
+    // --- 測試模擬區塊結束 ---
+
+    if (status && status.isTrial) {
+      const now = Date.now();
+      const expirationDate = status.expirationDate; // UniversalTime from rust in milliseconds since epoch/10000? No, FileTime is 100-nanosecond intervals since 1601. In Rust, SystemTime / DateTime.UniversalTime is indeed ticks (100-ns intervals since 1601) or standard epoch? Wait! UniversalTime in WinRT is actually standard. Let's see: UniversalTime represents milliseconds or ticks? No, in WinRT, Windows.Foundation.DateTime is ticks since 1601-01-01, but UniversalTime is a Unix Epoch-like or ticks? Let's check: actually DateTime.UniversalTime is ticks since 1601. But we can also check if now >= expirationDate.
+      // Let's do a safe check: if the expiration date is in the past (using whatever format we got, let's compare).
+      // Since WinRT DateTime UniversalTime is 100-nanosecond intervals since January 1, 1601 UTC, we convert JavaScript Date.now() to that:
+      const jsEpochTicks = 11644473600000; // Milliseconds between 1601 and 1970
+      const nowTicks = (now + jsEpochTicks) * 10000; // Convert millisecond to 100-nanosecond intervals
+
+      if (nowTicks >= expirationDate) {
+        // Disable main inputs to restrict usage
+        if (input) {
+          input.removeAttribute('data-i18n'); // Remove to prevent i18n system from overwriting our custom placeholder
+          input.disabled = true;
+          input.placeholder = window.i18n.lang === 'zh-TW'
+            ? '試用期已結束 (請至 Microsoft Store 購買完整版)'
+            : 'Trial has expired (please purchase the full version from Microsoft Store)';
+
+          // Redirect to Store on click (using custom handler since disabled inputs don't fire clicks)
+          const inputWrapper = input.closest('.input-wrapper');
+          if (inputWrapper) {
+            // Remove existing overlay if any to prevent duplicates
+            const oldOverlay = inputWrapper.querySelector('.trial-click-overlay');
+            if (oldOverlay) oldOverlay.remove();
+
+            // Create transparent overlay to intercept all pointer events (even over input/buttons)
+            const overlay = document.createElement('div');
+            overlay.className = 'trial-click-overlay';
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.zIndex = '100'; // Make sure it sits above voiceBtn and input
+            overlay.style.cursor = 'pointer';
+
+            overlay.addEventListener('click', (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              // Microsoft Store Product URL for mesmerli.MenuBarTodo using its Product ID/Package Family Name
+              window.api.openUrl('ms-windows-store://pdp/?PFN=mesmerli.MenuBarTodo_6t1y50ntn36fm');
+            });
+            inputWrapper.appendChild(overlay);
+          }
+        }
+        const addBtn = document.getElementById('add-todo-btn');
+        if (addBtn) addBtn.disabled = true;
+        if (voiceBtn) voiceBtn.disabled = true;
+
+        // Explicitly ensure the todo-list is shown
+        const todoList = document.getElementById('todo-list');
+        if (todoList) todoList.style.display = 'block';
+      } else {
+        const daysLeft = Math.ceil((expirationDate - nowTicks) / (10000 * 1000 * 60 * 60 * 24));
+        console.log(`Trial active. ${daysLeft} days remaining.`);
+      }
+    }
+  } catch (e) {
+    console.error('License check failed:', e);
+  }
+}
+
 async function init() {
   await window.i18n.init();
   await updateDragRegion();
   const state = await window.api.getUndoState();
   if (mainUndoBtn) mainUndoBtn.disabled = !state.canUndo;
-  
+
+  await fnCheckTrialLicense();
+
   todos = await window.api.loadTodos();
   renderTodos();
-  
+
   window.api.onWindowShow(async () => {
     input.focus();
     await updateDragRegion();
+    await fnCheckTrialLicense();
   });
-  
+
   window.api.onTodosUpdated(async () => {
     todos = await window.api.loadTodos();
     renderTodos();
   });
-  
+
   window.api.onLanguageChanged((lang) => {
     window.i18n.lang = lang;
     window.i18n.applyTranslations();
-    
+
     // Reset Vosk model/recognizer so they reload with the new language on next start
     if (voiceBtn && voiceBtn.classList.contains('listening')) stopVosk();
     model = null;
     recognizer = null;
     s2tConverter = null;
   });
-  
+
   window.addEventListener('focus', () => {
     input.focus();
   });
-  
+
   input.focus();
 }
 
 function renderTodos() {
   list.innerHTML = '';
   const now = new Date();
-  
+
   const filteredTodos = todos.filter(t => {
     const dim = t.dimension || 'day';
     return dim === currentDimension;
   });
-  
+
   // Sort: uncompleted first, then by id (newest first)
   filteredTodos.sort((a, b) => {
     if (a.completed === b.completed) {
@@ -386,17 +461,17 @@ function renderTodos() {
     }
     return a.completed ? 1 : -1;
   });
-  
+
   filteredTodos.forEach((todo) => {
     const li = document.createElement('li');
     li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
-    
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'todo-checkbox';
     checkbox.checked = todo.completed;
     checkbox.addEventListener('change', async () => await toggleTodo(todo.id));
-    
+
     const textSpan = document.createElement('span');
     textSpan.className = 'todo-text';
     renderTaskText(textSpan, todo.text);
@@ -406,7 +481,7 @@ function renderTodos() {
       input.type = 'text';
       input.className = 'edit-input';
       input.value = todo.text;
-      
+
       const saveEdit = async () => {
         const newText = input.value.trim();
         if (newText && newText !== todo.text) {
@@ -432,9 +507,9 @@ function renderTodos() {
       textSpan.appendChild(input);
       input.focus();
       const len = input.value.length;
-        input.setSelectionRange(len, len);
+      input.setSelectionRange(len, len);
     });
-    
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete-btn';
     deleteBtn.innerHTML = `
@@ -447,10 +522,10 @@ function renderTodos() {
       </svg>
     `;
     deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
-    
+
     li.appendChild(checkbox);
     li.appendChild(textSpan);
-    
+
     // Due Date Display
     const dueSpan = document.createElement('span');
     dueSpan.className = 'due-date';
@@ -468,10 +543,10 @@ function renderTodos() {
     }
     dueSpan.textContent = dueStr;
     if (isOverdue) dueSpan.classList.add('overdue');
-    
+
     dueSpan.addEventListener('click', (e) => {
       e.stopPropagation();
-      
+
       const input = document.createElement('input');
       input.type = 'text';
       input.className = 'edit-input';
@@ -521,14 +596,14 @@ function renderTodos() {
               const wasDueDate = todos[index].dueDate;
               if (wasDueDate !== newDate.getTime()) {
                 todos[index].dueDate = newDate.getTime();
-                
-                window.api.pushUndoAction({ 
-                  type: 'EDIT_DUEDATE', 
-                  id: todo.id, 
+
+                window.api.pushUndoAction({
+                  type: 'EDIT_DUEDATE',
+                  id: todo.id,
                   wasDueDate: wasDueDate,
                   newDueDate: newDate.getTime()
                 });
-                
+
                 await window.api.saveTodos(todos);
               }
             }
@@ -560,7 +635,7 @@ function renderTodos() {
     });
 
     li.appendChild(dueSpan);
-    
+
     li.appendChild(deleteBtn);
     list.appendChild(li);
   });
@@ -628,13 +703,13 @@ async function startVosk() {
     if (!recognizer) {
       recognizer = new model.KaldiRecognizer(16000);
       recognizer.setWords(true); // Capture precise timestamps per word if needed
-      
+
       // Finalized full phrase detection
       recognizer.on("result", (message) => {
         const result = message.result;
         if (result.text) {
           let text = result.text;
-          
+
           // Convert Simplified Chinese to Traditional Chinese if in zh-TW mode
           if (window.i18n.lang === 'zh-TW' && typeof OpenCC !== 'undefined') {
             if (!s2tConverter) {
@@ -642,7 +717,7 @@ async function startVosk() {
             }
             text = s2tConverter(text);
           }
-          
+
           input.value = text;
           // Auto-commit transcribed text into Todo item after a brief pause
           setTimeout(async () => {
@@ -694,7 +769,7 @@ async function startVosk() {
 
     source.connect(processor);
     processor.connect(audioContext.destination);
-    
+
     voiceBtn.classList.add('listening'); // Trigger CSS pulse animations
   } catch (err) {
     console.error('Vosk Start Error:', err);
@@ -743,14 +818,14 @@ async function toggleTodo(id) {
     } else {
       delete todos[index].completedAt;
     }
-    
-    window.api.pushUndoAction({ 
-      type: 'TOGGLE', 
-      id: id, 
+
+    window.api.pushUndoAction({
+      type: 'TOGGLE',
+      id: id,
       wasCompleted: wasCompleted,
       newCompleted: !wasCompleted
     });
-    
+
     renderTodos();
     await window.api.saveTodos(todos);
   }
@@ -760,11 +835,11 @@ async function deleteTodo(id) {
   const index = todos.findIndex(t => t.id === id);
   if (index !== -1) {
     const deleted = todos.splice(index, 1)[0];
-    
+
     // Archive and add to history
     const fileIndex = await window.api.archiveTodos([deleted]);
     window.api.pushUndoAction({ type: 'ARCHIVE', items: [deleted], fileIndex: fileIndex });
-    
+
     renderTodos();
     await window.api.saveTodos(todos);
   }

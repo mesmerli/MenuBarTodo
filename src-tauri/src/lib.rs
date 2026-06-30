@@ -733,6 +733,42 @@ fn get_version(app_handle: tauri::AppHandle) -> String {
 }
 
 #[tauri::command]
+async fn check_trial_license() -> Result<Value, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Services::Store::StoreContext;
+        
+        let result = tokio::task::spawn_blocking(|| {
+            let context = StoreContext::GetDefault().map_err(|e| e.to_string())?;
+            let license = context.GetAppLicenseAsync().map_err(|e| e.to_string())?.get().map_err(|e| e.to_string())?;
+            let is_trial = license.IsTrial().map_err(|e| e.to_string())?;
+            let expiration_date = license.ExpirationDate().map_err(|e| e.to_string())?;
+            
+            // ExpirationDate is a DateTime struct. Retrieve universal time in milliseconds
+            let universal_time = expiration_date.UniversalTime;
+            
+            Ok(serde_json::json!({
+                "isTrial": is_trial,
+                "expirationDate": universal_time
+            }))
+        }).await;
+        
+        match result {
+            Ok(inner) => inner,
+            Err(e) => Err(format!("Task spawn error: {}", e))
+        }
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(serde_json::json!({
+            "isTrial": false,
+            "expirationDate": 0
+        }))
+    }
+}
+
+#[tauri::command]
 fn set_widget_mode(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>, enabled: bool) -> Result<(), String> {
     let user_data_path = get_user_data_dir();
     let config_path = user_data_path.join("config.json");
@@ -1408,6 +1444,7 @@ pub fn run() {
             pomo_set_duration,
             pomo_get_state,
             get_version,
+            check_trial_license,
             set_widget_mode,
             push_undo_action,
             get_undo_state,

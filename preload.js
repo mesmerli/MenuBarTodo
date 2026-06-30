@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   pomoGetState: () => ipcRenderer.send('pomo-get-state'),
   onPomoTick: (callback) => ipcRenderer.on('pomo-tick', (event, state) => callback(state)),
   getVersion: () => ipcRenderer.invoke('get-version'),
+  checkTrialLicense: () => Promise.resolve({ isTrial: false, expirationDate: 0 }),
   setWidgetMode: (enabled) => ipcRenderer.send('set-widget-mode', enabled),
   
   // Global Undo System
@@ -31,5 +32,6 @@ contextBridge.exposeInMainWorld('api', {
   performUndo: () => ipcRenderer.invoke('perform-undo'),
   performRedo: () => ipcRenderer.invoke('perform-redo'),
   getUndoState: () => ipcRenderer.invoke('get-undo-state'),
-  onUndoStateUpdated: (callback) => ipcRenderer.on('undo-state-updated', (event, state) => callback(state))
+  onUndoStateUpdated: (callback) => ipcRenderer.on('undo-state-updated', (event, state) => callback(state)),
+  closeWindow: () => window.close()
 });
