@@ -1095,6 +1095,29 @@ fn perform_redo(app_handle: tauri::AppHandle, state: tauri::State<'_, AppState>)
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let app_handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+                        *state.widget_mode.lock().unwrap()
+                    } else {
+                        false
+                    };
+                    
+                    if widget_mode {
+                        if window.is_minimized().unwrap_or(false) {
+                            let _ = window.unminimize();
+                        }
+                    } else {
+                        position_window_near_tray(&window);
+                    }
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.emit("window-show", ());
+                }
+            });
+        }))
         .plugin(tauri_plugin_global_shortcut::Builder::new()
             .with_handler(|app, shortcut, event| {
                 if event.state() == ShortcutState::Pressed {
