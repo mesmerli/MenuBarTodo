@@ -1101,6 +1101,9 @@ pub fn run() {
             let app_handle = app.clone();
             let _ = app.run_on_main_thread(move || {
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    if let Some(state) = window.try_state::<AppState>() {
+                        *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
+                    }
                     let widget_mode = if let Some(state) = window.try_state::<AppState>() {
                         *state.widget_mode.lock().unwrap()
                     } else {
@@ -1115,6 +1118,7 @@ pub fn run() {
                         position_window_near_tray(&window);
                     }
                     let _ = window.show();
+                    let _ = window.unminimize();
                     let _ = window.set_focus();
                     let _ = window.emit("window-show", ());
                 }
