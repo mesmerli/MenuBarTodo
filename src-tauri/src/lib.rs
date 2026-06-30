@@ -15,6 +15,7 @@ struct AppState {
     redo_stack: Arc<Mutex<Vec<Value>>>,
     last_show_time: Arc<Mutex<Option<std::time::Instant>>>,
     widget_mode: Arc<Mutex<bool>>,
+    last_tray_position: Arc<Mutex<Option<(i32, i32)>>>,
 }
 
 fn get_user_data_dir() -> PathBuf {
@@ -322,6 +323,32 @@ async fn open_archive_window(app_handle: tauri::AppHandle) {
     create_web_window(&app_handle, "archive", "Archive", "archive.html", 800.0, 600.0);
 }
 
+fn position_window_near_tray(window: &tauri::WebviewWindow) {
+    let last_pos = if let Some(state) = window.try_state::<AppState>() {
+        *state.last_tray_position.lock().unwrap()
+    } else {
+        None
+    };
+
+    if let Some((x, y)) = last_pos {
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
+    } else {
+        let win_size = window.outer_size().unwrap_or(tauri::PhysicalSize::new(420, 600));
+        let win_w = win_size.width as i32;
+        let win_h = win_size.height as i32;
+        
+        if let Some(monitor) = window.primary_monitor().ok().flatten().or_else(|| window.current_monitor().ok().flatten()) {
+            let monitor_size = monitor.size();
+            let monitor_w = monitor_size.width as i32;
+            let monitor_h = monitor_size.height as i32;
+            
+            let x = monitor_w - win_w - 10;
+            let y = monitor_h - win_h - 50;
+            let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
+        }
+    }
+}
+
 fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
@@ -381,6 +408,9 @@ fn toggle_main_window(window: &tauri::WebviewWindow, rect: Rect) {
             }
             
             let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(x, y)));
+            if let Some(state) = window.try_state::<AppState>() {
+                *state.last_tray_position.lock().unwrap() = Some((x, y));
+            }
             let _ = window.show();
             let _ = window.set_focus();
             let _ = window.emit("window-show", ());
@@ -1053,6 +1083,14 @@ pub fn run() {
                                 if let Some(state) = window.try_state::<AppState>() {
                                     *state.last_show_time.lock().unwrap() = Some(std::time::Instant::now());
                                 }
+                                let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+                                    *state.widget_mode.lock().unwrap()
+                                } else {
+                                    false
+                                };
+                                if !widget_mode {
+                                    position_window_near_tray(&window);
+                                }
                                 let _ = window.show();
                                 let _ = window.set_focus();
                                 let _ = window.emit("window-show", ());
@@ -1072,6 +1110,7 @@ pub fn run() {
             redo_stack: Arc::new(Mutex::new(Vec::new())),
             last_show_time: Arc::new(Mutex::new(None)),
             widget_mode: Arc::new(Mutex::new(false)),
+            last_tray_position: Arc::new(Mutex::new(None)),
         })
         .setup(|app| {
             let shortcut = Shortcut::new(
@@ -1248,6 +1287,14 @@ pub fn run() {
                     match event.id().as_ref() {
                         "show" => {
                             if let Some(window) = app.get_webview_window("main") {
+                                let widget_mode = if let Some(state) = window.try_state::<AppState>() {
+                                    *state.widget_mode.lock().unwrap()
+                                } else {
+                                    false
+                                };
+                                if !widget_mode {
+                                    position_window_near_tray(&window);
+                                }
                                 let _ = window.show();
                                 let _ = window.set_focus();
                                 let _ = window.emit("window-show", ());
